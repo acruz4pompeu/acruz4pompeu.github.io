@@ -11,7 +11,7 @@ function draw() {
   let vboca= map(vol,0,1,0,300);
   background(127);
   //Cara
-  fill(0,0,0);
+  fill(100,100,100);
   ellipse(300,200,250,300);
   //Ull dret
   fill(255);
