@@ -11,7 +11,7 @@ function draw() {
   let vboca= map(vol,0,1,0,300);
   background(127);
   //Cara
-  fill(227,192,139);
+  fill(0,0,0);
   ellipse(300,200,250,300);
   //Ull dret
   fill(255);
@@ -26,7 +26,5 @@ function draw() {
   //Boca
   fill(200,15,15);
   arc(300,250,100,10+vboca,0,PI,CHORD);
-  //Nas
-  fill(219,169,116)
-  triangle(300,200,300,225,275-vulls,212.5);
+
 }
