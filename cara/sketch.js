@@ -26,5 +26,3 @@ function draw() {
   //Boca
   fill(200,15,15);
   arc(300,250,100,10+vboca,0,PI,CHORD);
-
-}
