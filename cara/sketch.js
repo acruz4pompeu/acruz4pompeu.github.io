@@ -29,7 +29,4 @@ function draw() {
   //Boca
   fill(200,15,15);
   arc(cX,cY+50,100,10+vboca,0,PI,CHORD);
-  //Nas
-  fill(219,169,116)
-  triangle(300,200,300,225,275-vulls,212.5);
 }
