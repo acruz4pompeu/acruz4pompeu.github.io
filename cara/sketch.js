@@ -1,10 +1,12 @@
 function setup() 
+{
+  createCanvas(600,400);
+  mic=new p5.AudioIn();
+  mic.start();
 }
 
 function draw() {
   let pseuRan= noise(frameCount*0.1);
-  let ranX = map(pseuRan,0,1,0,600);
-  let ranX = map(pseuRan,0,1,0,400);
   let cX =300;
   let cY =250;
   let vol= mic.getLevel();
@@ -29,4 +31,7 @@ function draw() {
   //Boca
   fill(200,15,15);
   arc(cX,cY+50,100,10+vboca,0,PI,CHORD);
+  //Nas
+  fill(219,169,116)
+  triangle(300,200,300,225,275-vulls,212.5);
 }
