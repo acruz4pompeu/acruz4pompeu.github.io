@@ -81,7 +81,12 @@
     <path d="m 486.25115,21.265553 c 35.63671,-7.300115 44.13556,53.322581 1.90438,48.561636 28.86049,-7.128449 21.61231,-44.49379 -1.90438,-48.561636 z"/>
         </g>
     </svg>
+  
     <script>
+        // Declaración de variables globales
+        let isInitialized = false;
+        let cycleTimeout;
+        
         const fileInput = document.getElementById('audioFile');
         const audioPlayer = document.getElementById('audioPlayer');
         const songSelect = document.getElementById('songSelect');
@@ -89,33 +94,35 @@
             wave1: document.getElementById('wave1'),
             wave2: document.getElementById('wave2'),
             wave3: document.getElementById('wave3'),
-            circle: document.getElementById('circle'),
-            heart: document.getElementById('heart'),
-            wepray: document.getElementById('wepray'),
-            cross: document.getElementById('cross'),
-            coldplay: document.getElementById('coldplay')
+            // Mantén el resto de tus shapes aquí
         };
 
         let audioContext, analyser, frequencyData;
         let currentShapeIndex = 0;
 
-        // Configuration for each song (easily scalable)
+        // Configuración de las canciones
         const songConfig = {
             song1: {
                 shapeOrder: ['wave1', 'wave2', 'wave3'],
-                durations: [4000, 8000, 9999]
+                durations: [4000, 4000, 4000]
             },
             song2: {
-                shapeOrder: ['circle', 'heart', 'wepray', 'cross'],
-                durations: [4000, 8000, 6000, 10000, 999999]
+                shapeOrder: ['wave1', 'wave2', 'wave3'],
+                durations: [4000, 4000, 4000]
             }
         };
-        
-          fileInput.addEventListener('change', handleFileUpload);
+
+        // Event Listeners
+        fileInput.addEventListener('change', handleFileUpload);
         songSelect.addEventListener('change', resetVisualizer);
-        audioPlayer.addEventListener('play', startCycleShapes);
+        audioPlayer.addEventListener('play', async () => {
+            if (audioContext && audioContext.state === 'suspended') {
+                await audioContext.resume();
+            }
+            startCycleShapes();
+        });
         audioPlayer.addEventListener('pause', stopCycleShapes);
-    
+
         function handleFileUpload(event) {
             const file = event.target.files[0];
             if (file && file.type.startsWith('audio/')) {
@@ -125,47 +132,57 @@
                 if (!isInitialized) {
                     initAudio();
                 }
-            } else {
-                alert('Please upload a valid audio file.');
             }
         }
-    
-        function initAudio() {
-            audioContext = new (window.AudioContext || window.webkitAudioContext)();
-            analyser = audioContext.createAnalyser();
-            analyser.fftSize = 256;
-            frequencyData = new Uint8Array(analyser.frequencyBinCount);
-    
-            const source = audioContext.createMediaElementSource(audioPlayer);
-            source.connect(analyser);
-            analyser.connect(audioContext.destination);
-    
-            isInitialized = true; // Marca el contexto como inicializado
-            visualize();
+
+        async function initAudio() {
+            try {
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                analyser = audioContext.createAnalyser();
+                analyser.fftSize = 256;
+                frequencyData = new Uint8Array(analyser.frequencyBinCount);
+
+                const source = audioContext.createMediaElementSource(audioPlayer);
+                source.connect(analyser);
+                analyser.connect(audioContext.destination);
+
+                isInitialized = true;
+                updateShapeVisibility();
+                visualize();
+            } catch (error) {
+                console.error('Error initializing audio:', error);
+            }
         }
-    
+
         function visualize() {
-            if (audioContext && audioContext.state === 'running') { // Verifica que el contexto esté activo
+            if (!audioContext || audioContext.state !== 'running') {
                 requestAnimationFrame(visualize);
-                analyser.getByteFrequencyData(frequencyData);
-    
-                const averageFrequency = frequencyData.reduce((a, b) => a + b) / frequencyData.length;
-                const scale = averageFrequency / 255;
-    
-                const selectedShape = shapes[getCurrentShape()];
+                return;
+            }
+
+            requestAnimationFrame(visualize);
+            analyser.getByteFrequencyData(frequencyData);
+
+            const averageFrequency = frequencyData.reduce((a, b) => a + b) / frequencyData.length;
+            const scale = 1 + (averageFrequency / 255) * 0.5; // Reducido el factor de escala
+            
+            const currentShape = getCurrentShape();
+            if (shapes[currentShape]) {
                 const hue = Math.round((averageFrequency / 255) * 360);
-                selectedShape.setAttribute('fill', `hsl(${hue}, 100%, 50%)`);
-                selectedShape.setAttribute('transform', `scale(${scale + 0.5})`);
+                shapes[currentShape].style.display = 'block';
+                shapes[currentShape].setAttribute('fill', `hsl(${hue}, 100%, 50%)`);
+                shapes[currentShape].setAttribute('transform', `scale(${scale})`);
             }
         }
-    
+
         function startCycleShapes() {
-            if (!isInitialized) { // Asegura que initAudio se haya ejecutado
+            if (!isInitialized) {
                 initAudio();
             }
-            const songData = songConfig[songSelect.value];
+            
             updateShapeVisibility();
-    
+            const songData = songConfig[songSelect.value];
+
             cycleTimeout = setTimeout(() => {
                 currentShapeIndex = (currentShapeIndex + 1) % songData.shapeOrder.length;
                 if (!audioPlayer.paused) {
@@ -173,30 +190,38 @@
                 }
             }, songData.durations[currentShapeIndex]);
         }
-    
+
         function stopCycleShapes() {
             clearTimeout(cycleTimeout);
         }
-    
+
         function resetVisualizer() {
-            clearTimeout(cycleTimeout);
-            audioPlayer.currentTime = 0;
-            audioPlayer.pause();
+            stopCycleShapes();
             currentShapeIndex = 0;
             updateShapeVisibility();
         }
-    
+
         function getCurrentShape() {
             return songConfig[songSelect.value].shapeOrder[currentShapeIndex];
         }
-    
+
         function updateShapeVisibility() {
+            // Oculta todas las formas primero
             Object.keys(shapes).forEach(key => {
-                shapes[key].style.display = key === getCurrentShape() ? 'block' : 'none';
+                if (shapes[key]) {
+                    shapes[key].style.display = 'none';
+                }
             });
+            
+            // Muestra solo la forma actual
+            const currentShape = getCurrentShape();
+            if (shapes[currentShape]) {
+                shapes[currentShape].style.display = 'block';
+            }
         }
-    </script>    
-    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.7/dist/umd/popper.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.min.js"></script>
+
+        // Inicialización inicial
+        updateShapeVisibility();
+    </script>
 </body>
 </html>
