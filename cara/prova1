@@ -1,0 +1,72 @@
+let mic;
+let bgColor;
+let nextBgColor;
+let lerpAmount = 0;
+
+function setup() {
+  mic = new p5.AudioIn();
+  mic.start();
+  createCanvas(600, 400);
+  bgColor = color(200, 220, 255);
+  nextBgColor = color(random(100, 255), random(100, 255), random(100, 255));
+}
+
+function draw() {
+  let faceX = 300;
+  let faceY = 200;
+  let leftEyeSize = 30 + 10 * cos(frameCount * 0.1);
+  let rightEyeSize = 30 + 10 * sin(frameCount * 0.1);
+  let vol = mic.getLevel();
+  let h = map(vol, 0, 1, 0, 300);
+  let x = 200 * noise(0.1 * frameCount);
+  let y = 200 * noise(0.1 * frameCount + 100);
+  let ales = 10 * random(1);
+  let browMove = 5 * sin(frameCount * 0.1);
+  
+  // Transición suave del fondo
+  bgColor = lerpColor(bgColor, nextBgColor, 0.01);
+  background(bgColor);
+  
+  // Cambiar color de fondo cada cierto tiempo
+  if (frameCount % 200 === 0) {
+    nextBgColor = color(random(100, 255), random(100, 255), random(100, 255));
+  }
+  
+  // Orejas
+  fill(255, 200, 150);
+  ellipse(faceX - 130, faceY, 50, 80);
+  ellipse(faceX + 130, faceY, 50, 80);
+  
+  // Cara
+  fill(0, 255, 100);
+  ellipse(faceX, faceY, 240, 350);
+
+  // Cabello
+  fill(0);
+  arc(faceX, faceY - 120, 180, 100, PI, 0, CHORD);
+  
+  // Cejas con movimiento
+  fill(0);
+  rect(faceX - 65, faceY - 70 + browMove, 40, 10, 5);
+  rect(faceX + 25, faceY - 70 + browMove, 40, 10, 5);
+  
+  // Ojos
+  fill(77, 11, 246);
+  ellipse(faceX - 50, faceY - 50, 50, leftEyeSize);
+  ellipse(faceX + 50, faceY - 50, 50, rightEyeSize);
+  fill(0);
+  ellipse(faceX - 50, faceY - 50, 25, leftEyeSize / 2);
+  ellipse(faceX + 50, faceY - 50, 25, rightEyeSize / 2);
+  
+  // Boca
+  fill(0);
+  arc(faceX, faceY + 50, 120, 30 + h, 0, PI);
+  
+  // Elementos adicionales
+  fill(255);
+  noStroke();
+  ellipse(x - 10, y, 15 + ales, 25);
+  ellipse(x + 10, y, 15 + ales, 25);
+  fill(0);
+  ellipse(x, y, 10, 20);
+}
