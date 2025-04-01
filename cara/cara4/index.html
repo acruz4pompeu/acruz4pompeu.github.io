@@ -1,0 +1,87 @@
+let mic;
+let bgColor;
+let nextBgColor;
+
+function setup() {
+  mic = new p5.AudioIn();
+  mic.start();
+  createCanvas(600, 400);
+  bgColor = color(200, 220, 255);
+  nextBgColor = getRandomColor();
+}
+
+function draw() {
+  updateBackground();
+  drawEars(300, 200);
+  drawFace(300, 200);
+  drawHeadband(300, 80);
+  drawEyebrows(300, 130);
+  drawEyes(300, 150);
+  drawMouth(300, 250);
+  drawRandomElements();
+}
+
+function getRandomColor() {
+  return color(random(100, 255), random(100, 255), random(100, 255));
+}
+
+function updateBackground() {
+  bgColor = lerpColor(bgColor, nextBgColor, 0.01);
+  background(bgColor);
+  if (frameCount % 200 === 0) {
+    nextBgColor = getRandomColor();
+  }
+}
+
+function drawEars(faceX, faceY) {
+  fill(255, 200, 150);
+  ellipse(faceX - 130, faceY, 50, 80);
+  ellipse(faceX + 130, faceY, 50, 80);
+}
+
+function drawFace(faceX, faceY) {
+  fill(0, 255, 100);
+  ellipse(faceX, faceY, 240, 350);
+}
+
+function drawHeadband(faceX, topY) {
+  fill(0);
+  arc(faceX, topY, 180, 100, PI, 0, CHORD);
+}
+
+function drawEyebrows(faceX, browY) {
+  let browMove = 5 * sin(frameCount * 0.1);
+  fill(0);
+  rect(faceX - 65, browY + browMove, 40, 10, 5);
+  rect(faceX + 25, browY + browMove, 40, 10, 5);
+}
+
+function drawEyes(faceX, eyeY) {
+  let leftEyeSize = 30 + 10 * cos(frameCount * 0.1);
+  let rightEyeSize = 30 + 10 * sin(frameCount * 0.1);
+  fill(77, 11, 246);
+  ellipse(faceX - 50, eyeY, 50, leftEyeSize);
+  ellipse(faceX + 50, eyeY, 50, rightEyeSize);
+  fill(0);
+  ellipse(faceX - 50, eyeY, 25, leftEyeSize / 2);
+  ellipse(faceX + 50, eyeY, 25, rightEyeSize / 2);
+}
+
+function drawMouth(faceX, mouthY) {
+  let vol = mic.getLevel();
+  let h = map(vol, 0, 1, 0, 300);
+  fill(0);
+  arc(faceX, mouthY, 120, 30 + h, 0, PI);
+}
+
+function drawRandomElements() {
+  let x = 200 * noise(0.1 * frameCount);
+  let y = 200 * noise(0.1 * frameCount + 100);
+  let ales = 10 * random(1);
+  fill(255);
+  noStroke();
+  ellipse(x - 10, y, 15 + ales, 25);
+  ellipse(x + 10, y, 15 + ales, 25);
+  fill(0);
+  ellipse(x, y, 10, 20);
+}
