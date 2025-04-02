@@ -1,3 +1,4 @@
+
 let mic;
 let bgColor;
 let nextBgColor;
@@ -84,4 +85,18 @@ function drawRandomElements() {
   ellipse(x + 10, y, 15 + ales, 25);
   fill(0);
   ellipse(x, y, 10, 20);
+  
+  function mosca(wales, hales){
+  let x = 600 * random(noise(0.1 * frameCount));
+  let y = 400 * random(noise(0.1 * frameCount + 100));
+  let ales = 10*random(1);
+  fill(255);
+  strokeWeight(0.1);
+  ellipse(x - 10, y, wales + ales, hales); // wales=15, hales=25
+  ellipse(x + 10, y, 15 + ales, 25);
+  fill(0);
+  ellipse(x, y, 10, 20);
+  text("Cara amb mosca - Gerard León" , 10, 390)
+  print(10*cos(frameCount*0.1));
+}
 }
