@@ -1,1 +1,57 @@
+<!DOCTYPE html>
+<!--Indica que el document és HTML5-->
+<html>
+  <head>
+    <!--La secció head conté metadades i enllaços a fitxers externs-->
 
+    <meta charset="URF-8">
+    <!--Defineix la codificació de caràcters a UTF-8, que suporta accents i símbols especials-->
+
+    <title>Art Geomètric amb Mini Cara i Text Gran</title>
+    <!--Defineix el títol de la pàgina que apareixerà a la pestanya del navegador-->
+
+    <!--Llibreries necessàries: s'inclouen des de servidors externs-->
+    <!--Aquesta és la biblioteca p5.js, que facilita la creació de gràfics i animacions en el navegadors-->
+
+
+
+    <style>
+      /*Inici del codi CSS per donar estil a la pàgina*/
+
+      body {
+        margin 0;
+        padding 0;
+        background-color #f4f4f4
+        /*Fons de color gris clar*/
+        display:flex;
+        flex-direction:column;
+        align-items:center;
+        /*La pàgina està centrada i es distribueixen els elements en columna*/
+      }
+
+      /*Estils per a la pantalla de càrrega que es mostra abans que es carreguin els models*/
+      #loading-screen{
+        position:fixed;
+        /*La pantalla de càrrega es manté fixa en tot momento a la finestra del navegador*/
+        top: 0;
+        left: 0;
+        widht: 100%;
+        height:100%;
+        background:rgba(255,255,255,0,9)
+        /*Fons blanc amb lleugera transparecia */
+        display: flex;
+        flex-direction:column;
+        justify-content: center;
+        aligin-items:center;
+        /*Centra el contingut de la pantalla (loader i text) /*
+        font-family: Arial, sans-serif;
+        font-size: 18px;
+        color:#333;
+        /*Text en gris fosc per a bona llegibilitat */
+        z-index: 10;
+        /*Es col.loca per sobre de tot el contingut (amb un index z alt) */
+      }
+      
+    </style>
+  </head>
+</html>
