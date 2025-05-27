@@ -1,0 +1,133 @@
+int buttons[4] = {2, 3, 4, 5};
+int leds[4]    = {8, 9, 10, 11};
+
+boolean button[4] = {0, 0, 0, 0};
+
+#define buzzer 6
+#define levelsInGame 50
+
+int bt_simonSaid[100];
+int led_simonSaid[100];
+
+boolean lost;
+int game_play, level, stage;
+
+void setup() {
+  Serial.begin(9600);
+  for (int i = 0; i < 4; i++) {
+    pinMode(buttons[i], INPUT_PULLUP);
+    pinMode(leds[i], OUTPUT);
+  }
+  pinMode(buzzer, OUTPUT);
+  randomSeed(analogRead(0));
+  level = 1;
+  stage = 0;
+}
+
+void loop() {
+  switch (stage) {
+
+    case 0: // Esperar inicio
+      blinkLed(0, 2); // Parpadea LED rojo para indicar inicio
+      if (digitalRead(buttons[0]) == LOW) {
+        while (digitalRead(buttons[0]) == LOW); // Espera a soltar
+        delay(100);
+        level = 1;
+        game_play = 1;
+        stage = 1;
+      }
+      break;
+
+    case 1: // Mostrar secuencia
+      delay(1000);
+      led_simonSaid[level] = random(8, 12); // LEDs en pines 8 a 11
+      for (int i = 1; i <= level; i++) {
+        digitalWrite(led_simonSaid[i], HIGH);
+        playBuzzer(led_simonSaid[i] - 7);
+        digitalWrite(led_simonSaid[i], LOW);
+        delay(400);
+      }
+      delay(500);
+      game_play = 1;
+      stage = 2;
+      break;
+
+    case 2: // Esperar respuestas del jugador
+      for (int i = 0; i < 4; i++) {
+        button[i] = digitalRead(buttons[i]);
+        if (button[i] == LOW) {
+          bt_simonSaid[game_play] = leds[i];
+          digitalWrite(leds[i], HIGH);
+          playBuzzer(i + 1);
+          while (digitalRead(buttons[i]) == LOW);
+          delay(50);
+          digitalWrite(leds[i], LOW);
+          game_play++;
+          if (game_play - 1 == level) {
+            game_play = 1;
+            stage = 3;
+            break;
+          }
+        }
+      }
+      delay(10);
+      break;
+
+    case 3: // Verificación
+      lost = false;
+      for (int i = 1; i <= level; i++) {
+        if (led_simonSaid[i] != bt_simonSaid[i]) {
+          lost = true;
+          break;
+        }
+      }
+      stage = lost ? 4 : 5;
+      break;
+
+    case 4: // Juego perdido
+      tone(buzzer, 350);
+      flashAllLeds(3, 500);
+      noTone(buzzer);
+      delay(500);
+      level = 1;
+      stage = 0;
+      break;
+
+    case 5: // Nivel ganado
+      flashAllLeds(2, 300);
+      delay(300);
+      if (level == levelsInGame) {
+        flashAllLeds(5, 100); // Celebración final
+        level = 1;
+        stage = 0;
+      } else {
+        level++;
+        stage = 1;
+      }
+      break;
+  }
+}
+
+void playBuzzer(int x) {
+  tone(buzzer, 650 + (x * 100));
+  delay(300);
+  noTone(buzzer);
+}
+
+void blinkLed(int ledIndex, int times) {
+  for (int i = 0; i < times; i++) {
+    digitalWrite(leds[ledIndex], HIGH);
+    delay(250);
+    digitalWrite(leds[ledIndex], LOW);
+    delay(250);
+  }
+}
+
+void flashAllLeds(int times, int duration) {
+  for (int i = 0; i < times; i++) {
+    for (int j = 0; j < 4; j++) digitalWrite(leds[j], HIGH);
+    delay(duration);
+    for (int j = 0; j < 4; j++) digitalWrite(leds[j], LOW);
+    delay(duration);
+  }
+}
