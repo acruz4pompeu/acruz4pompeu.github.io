@@ -1,1698 +1,1698 @@
 <!DOCTYPE html>
 <html lang="ca">
-<capçalera>
-<meta name="viewport" content="width=amplada-del-dispositiu, escala-inicial=1.0">
-<meta charset="UTF-8">
-<title>Art interactiu</title>
-<script src=" https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.11.3/p5.js "></script>
-<script src=" https://cdn.jsdelivr.net/gh/ml5js/Intro-ML-Arts-IMA@ml5-build-10-7-19/ml5_build/ml5.min.js "></script>
-<estil>
-cos { marge: 0; farciment: 0; desbordament: ocult; fons: #f0f0f0; }
-#pantalla-de-carregament {
-posició: fixa; superior: 0; esquerra: 0; amplada: 100vw; alçada: 100vh;
-fons: rgba(255,255,255,0.95); pantalla: flex; direcció-flexió: columna;
-justify-content: center; align-items: center; família de fonts: Arial, sans-serif; z-index: 1000;
-}
-.loader {
-amplada: 40px; alçada: 40px; vora: 5px sòlida #3498db; color-superior-de-la-vora: transparent;
-radi de la vora: 50%; animació: gir 1s lineal infinit;
-}
-@keyframes gira { a { transforma: rotate(360deg); } }
-#pantalla-de-càrrega p { margin-top: 15px; font-size: 1.1em; color: #333; }
-</estil>
+<head>
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8">
+  <title>Art interactiu</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.11.3/p5.js"></script>
+  <script src="https://cdn.jsdelivr.net/gh/ml5js/Intro-ML-Arts-IMA@ml5-build-10-7-19/ml5_build/ml5.min.js"></script>
+<style>
+    body { margin: 0; padding: 0; overflow: hidden; background: #f0f0f0; }
+    #loading-screen {
+      position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+      background: rgba(255,255,255,0.95); display: flex; flex-direction: column;
+      justify-content: center; align-items: center; font-family: Arial, sans-serif; z-index: 1000;
+    }
+    .loader {
+      width: 40px; height: 40px; border: 5px solid #3498db; border-top-color: transparent;
+      border-radius: 50%; animation: spin 1s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    #loading-screen p { margin-top: 15px; font-size: 1.1em; color: #333; }
+  </style>
 </head>
-<cos>
-<div id="pantalla-de-càrrega">
-<div class="carregador"></div>
-<p>Models Carregant...</p>
-</div>
-<script>
-let faceapi, deteccions = [], vídeo;
-let modelsReady = false;
-let expressióActual = { dominant: 'neutral', intensitat: 0 };
-sigui smoothIntensity = 0;
+<body>
+  <div id="loading-screen">
+    <div class="loader"></div>
+    <p>Carregant models...</p>
+  </div>
+  <script>
+    let faceapi, detections = [], video;
+    let modelsReady = false;
+    let currentExpression = { dominant: 'neutral', intensity: 0 };
+    let smoothIntensity = 0;
 
-// Traducció d'emocions a català
-const emocionsCA = {
-feliç: "feliç",
-trist: "trist",
-enfadat: "enfadat",
-sorprès: "sorprès",
-disgustat: "fastiguejat",
-temible: "espantat",
-neutre: "neutral"
-};
+    // Traducció d'emocions a català
+    const emotionsCA = {
+      happy: "feliç",
+      sad: "trist",
+      angry: "enfadat",
+      surprised: "sorprès",
+      disgusted: "fastiguejat",
+      fearful: "espantat",
+      neutral: "neutral"
+    };
 
-// Emoticones per cada emoció
-const emocionsEmoji = {
-content: "😄",
-trist: "😢",
-enfadat: "😠",
-sorprès: "😲",
-disgustat: "🤢",
-poruc: "😱",
-neutre: "😐"
-};
+    // Emoticones per cada emoció
+    const emotionsEmoji = {
+      happy: "😄",
+      sad: "😢",
+      angry: "😠",
+      surprised: "😲",
+      disgusted: "🤢",
+      fearful: "😱",
+      neutral: "😐"
+    };
 
-configuració de la funció () {
-createCanvas(ampladaDeLaFinestra, AlçadaDeLaFinestra);
+    function setup() {
+      createCanvas(windowWidth, windowHeight);
 
-vídeo = createCapture(VIDEO);
-vídeo.mida(320, 240);
-vídeo.amaga();
-vídeo.elt.silenciat = true;
-vídeo.elt.playsinline = true;
+      video = createCapture(VIDEO);
+      video.size(320, 240);
+      video.hide();
+      video.elt.muted = true;
+      video.elt.playsinline = true;
 
-const options = { ambPuntsDeReferència: fals, ambExpressions: cert, ambDescriptors: fals };
-faceapi = ml5.faceApi(vídeo, opcions, () => {
-modelsReady = true;
-document.getElementById('pantalla-de-carregament').style.display = 'cap';
-faceapi.detect(obtéResultats);
-});
-}
+      const options = { withLandmarks: false, withExpressions: true, withDescriptors: false };
+      faceapi = ml5.faceApi(video, options, () => {
+        modelsReady = true;
+        document.getElementById('loading-screen').style.display = 'none';
+        faceapi.detect(gotResults);
+      });
+    }
 
-funció windowResized() {
-resizeCanvas(ampladaDeLaFinestra, AlçadaDeLaFinestra);
-}
+    function windowResized() {
+      resizeCanvas(windowWidth, windowHeight);
+    }
 
-funció obtéResultats(err, resultats) {
-si (err) {
-consola.error(err);
-document.getElementById('pantalla-de-càrrega').innerHTML =
-'<p style="color: red">Error! Comprova la càmera i actualitza.</p>';
-retorn;
-}
-deteccions = resultats;
-si (deteccions.longitud > 0) actualitzaExpressióActual();
-faceapi.detect(obtéResultats);
-}
+    function gotResults(err, results) {
+      if (err) {
+        console.error(err);
+        document.getElementById('loading-screen').innerHTML =
+          '<p style="color: red">Error! Comprova la càmera i actualitza.</p>';
+        return;
+      }
+      detections = results;
+      if (detections.length > 0) updateCurrentExpression();
+      faceapi.detect(gotResults);
+    }
 
-funció actualitzacióExpressióActual() {
-sigui maxIntensity = 0;
-deteccions.per a cada cara => {
-const expr = face.expressions;
-const dominant = Object.keys(expr).reduce((a, b) => expr[a] > expr[b] ? a : b);
-si (expr[dominant] > intensitatMàxima) {
-ActualExpression = { dominant: dominant, intensitat: expr[dominant] };
-intensitatMàxima = expr[dominant];
-}
-});
-}
+    function updateCurrentExpression() {
+      let maxIntensity = 0;
+      detections.forEach(face => {
+        const expr = face.expressions;
+        const dominant = Object.keys(expr).reduce((a, b) => expr[a] > expr[b] ? a : b);
+        if (expr[dominant] > maxIntensity) {
+          currentExpression = { dominant: dominant, intensity: expr[dominant] };
+          maxIntensity = expr[dominant];
+        }
+      });
+    }
 
-funció dibuixar() {
-fons (240);
+    function draw() {
+      background(240);
 
-// Transició suau de la intensitat
-smoothIntensity = lerp(smoothIntensity, currentExpression.intensity, 0.1);
+      // Transició suau de la intensitat
+      smoothIntensity = lerp(smoothIntensity, currentExpression.intensity, 0.1);
 
-// Dibuixa la figura geomètrica gran centrada segons el sentiment
-empènyer();
-tradueix(amplada/2, alçada/2);
-switch(expressió_actual.dominant) {
-cas 'feliç':
-empènyer();
-traduir (amplada/2 - 1000, alçada/2 - 600); // 300 i 400 són la meitat de 600x800
-figuraFelic(intensitat suau);
-pop();
-trencar;
+      // Dibuixa la figura geomètrica gran centrada segons el sentiment
+      push();
+      translate(width/2, height/2);
+      switch(currentExpression.dominant) {
+        case 'happy':
+        push();
+        translate(width/2 - 1000, height/2 - 600); // 300 i 400 són la meitat de 600x800  
+        figuraFelic(smoothIntensity);
+        pop();
+        break;
+       
+        case 'sad':
+        push();
+        translate(width/2 - 1000, height/2 - 600); // 300 i 400 són la meitat de 600x800      
+        figuraTrist(smoothIntensity);
+        pop();
+        break;
+       
+        //Enfadat
+        case 'angry':
+        push();
+        translate(width/2 - 1000, height/2 - 600); // 300 i 400 són la meitat de 600x800      
+        figuraEnfadat(smoothIntensity);
+        pop();
+        break;
+       
+        //Disgustat
+        case 'disgusted':  
+        push();
+        translate(width/2 - 1000, height/2 - 600); // 300 i 400 són la meitat de 600x800
+        figuraFastiguejat(smoothIntensity);
+        pop();
+        break;
+       
+        //Sorprès
+        case 'surprised':
+        push();
+        translate(width/2 - 1000, height/2 - 600); // 300 i 400 són la meitat de 600x800
+        figuraSorprès(smoothIntensity);
+        pop();
+        break;
 
-cas 'trist':
-empènyer();
-traduir (amplada/2 - 1000, alçada/2 - 600); // 300 i 400 són la meitat de 600x800
-figuraTrist(smoothIntensity);
-pop();
-trencar;
+        case 'fearful':    
+        push();
+        translate(width/2 - 1000, height/2 - 600); // 300 i 400 són la meitat de 600x800
+        figuraEspantat(smoothIntensity);
+        pop();
+        break;
 
-//Enfadat
-cas 'enfadat':
-empènyer();
-traduir (amplada/2 - 1000, alçada/2 - 600); // 300 i 400 són la meitat de 600x800
-figuraEnfadat(smoothIntensity);
-pop();
-trencar;
+        default:      
+        push();
+        translate(width/2 - 1000, height/2 - 600); // 300 i 400 són la meitat de 600x800    
+        figuraNeutral(smoothIntensity);
+        pop();
+        break;
+      }
+      pop();
 
-//Fastigós
-cas 'disgustat':
-empènyer();
-traduir (amplada/2 - 1000, alçada/2 - 600); // 300 i 400 són la meitat de 600x800
-figuraFastiguejat(smoothIntensity);
-pop();
-trencar;
+      // Mostra el vídeo petit a la cantonada inferior dreta
+      let vW = 160, vH = 120;
+      let margin = 20;
+      imageMode(CORNER);
+      push();
+      translate(width - vW - margin, height - vH - margin);
+      stroke(255);
+      strokeWeight(2);
+      fill(0, 180);
+      rect(-5, -5, vW+10, vH+10, 12);
+      image(video, 0, 0, vW, vH);
+      pop();
+     
 
-//Sorpresa
-cas 'sorprès':
-empènyer();
-traduir (amplada/2 - 1000, alçada/2 - 600); // 300 i 400 són la meitat de 600x800
-figuraSorprès(smoothIntensity);
-pop();
-trencar;
+      // Text informatiu a dalt amb emoticona
+      fill(30, 180);
+      noStroke();
+      textAlign(CENTER, TOP);
+      textSize(28);
+      let label = emotionsCA[currentExpression.dominant] || "neutral";
+      let emoji = emotionsEmoji[currentExpression.dominant] || "😐";
+      text(
+        `${emoji} Sentiment: ${label} (${(smoothIntensity*100).toFixed(0)}%)`,
+        width/2, 20
+      );
+    }
 
-cas 'temible':
-empènyer();
-traduir (amplada/2 - 1000, alçada/2 - 600); // 300 i 400 són la meitat de 600x800
-figuraEspantat(smoothIntensity);
-pop();
-trencar;
+    function figuraFelic(intensity) {
 
-per defecte:
-empènyer();
-traduir (amplada/2 - 1000, alçada/2 - 600); // 300 i 400 són la meitat de 600x800
-figuraNeutral(smoothIntensity);
-pop();
-trencar;
-}
-pop();
+    }
 
-// Mostra el vídeo petit a la cantonada inferior dreta
-sigui vW = 160, vH = 120;
-deixa marge = 20;
-mode_imatge(CORNER);
-empènyer();
-translate(amplada - vA - marge, alçada - vA - marge);
-ictus (255);
-pes_de_traç(2);
-omplir(0, 180);
-rect(-5, -5, vW+10, vH+10, 12);
-imatge(vídeo, 0, 0, vW, vH);
-pop();
+    function figuraTrist(intensity) {
 
+    }
 
-// Text informatiu a dalt amb emoticona
-omplir(30, 180);
-noStroke();
-textAlign(CENTRE, SUPERIOR);
-mida_text(28);
-let label = emocionsCA[expressió_actual.dominant] || "neutral";
-let emoji = emocionsEmoji[expressióactual.dominant] || "😐";
-text (
-`Sentiment de ${emoji}: ${label} (${(smoothIntensity*100).toFixed(0)}%)`,
-amplada/2, 20
-);
-}
+    function figuraEnfadat(intensity) {
 
-funció figuraFelic(intensitat) {
+    }
 
-}
+    function figuraFastiguejat(intensity) {
+       
+    }
 
-funció figuraTrist(intensitat) {
+    function figuraSorprès(intensity) {
 
-}
+    }
 
-funció figuraEnfadat(intensitat) {
+    function figuraEspantat(intensity) {
 
-}
+    }
 
-funció figuraFastiguejat(intensitat) {
-
-}
-
-funció figuraSorprès(intensitat) {
-
-}
-
-funció figuraEspantat(intensitat) {
-
-}
-
-funció figuraNeutral(intensitat) {
-//pel Frida 1
-omplir(0,0,0)
-començaForma();
-omplir (96,96,96)
-vèrtex(484, 89.1875);
-vèrtex(481, 91.1875);
-vèrtex(480, 86.1875);
-vèrtex(479, 78.1875);
-vèrtex(478, 69.1875);
-vèrtex(470, 63.1875);
-vèrtex(459, 61.1875);
-vèrtex(450, 59.1875);
-vèrtex(442, 61.1875);
-vèrtex(435, 66.1875);
-vèrtex(430, 76.1875);
-vèrtex(425, 68.1875);
-vèrtex(426, 53.1875);
-vèrtex(426, 48.1875);
-vèrtex(432, 41.1875);
-vèrtex(440, 36.1875);
-vèrtex(447, 35.1875);
-vèrtex(455, 35.1875);
-vèrtex(463, 29.1875);
-vèrtex(472, 29.1875);
-vèrtex(489, 33.1875);
-vèrtex(496, 38.1875);
-vèrtex(502, 44.1875);
-vèrtex(503, 57.1875);
-vèrtex(504, 62.1875);
-vèrtex(504, 76.1875);
-vèrtex(502, 83.1875);
-vèrtex(497, 94.1875);
-vèrtex(496, 99.1875);
-vèrtex(493, 103.1875);
-vèrtex(495, 91.1875);
-vèrtex(489, 87.1875);
-vèrtex(485, 90.1875);
-final_forma();
-//cara de Frida 1
-començaForma();
-omplir (255, 204, 153)
-vèrtex(482, 92.1875);
-vèrtex(478, 71.1875);
-vèrtex(474, 62.1875);
-vèrtex(447, 60.1875);
-vèrtex(435, 63.1875);
-vèrtex(432, 74.1875);
-vèrtex(427, 101.1875);
-vèrtex(432, 115.1875);
-vèrtex(433, 123.1875);
-vèrtex(438, 129.1875);
-vèrtex(440, 130.1875);
-vèrtex(456, 132.1875);
-vèrtex(465, 127.1875);
-vèrtex(474, 121.1875);
-vèrtex(480, 107.1875);
-vèrtex(481, 91.1875);
-final_forma();
-//oreha frida 1
-començaForma();
-omplir (255, 204, 153)
-vèrtex(481, 91.1875);
-vèrtex(489, 87.1875);
-vèrtex(495, 92.1875);
-vèrtex(494, 101.1875);
-vèrtex(490, 109.1875);
-vèrtex(486, 113.1875);
-vèrtex(482, 112.1875);
-vèrtex(482, 102.1875);
-final_forma();
-//coll de Frida 1
-començaForma();
-omplir (255, 204, 153)
-vèrtex(485, 111.1875);
-vèrtex(483, 118.1875);
-vèrtex(482, 126.1875);
-vèrtex(483, 140.1875);
-vèrtex(485, 145.1875);
-vèrtex(492, 157.1875);
-vèrtex(500, 159.1875);
-vèrtex(504, 162.1875);
-vèrtex(500, 175.1875);
-vèrtex(496, 181.1875);
-vèrtex(490, 187.1875);
-vèrtex(479, 193.1875);
-vèrtex(471, 197.1875);
-vèrtex(450, 200.1875);
-vèrtex(439, 195.1875);
-vèrtex(432, 190.1875);
-vèrtex(428, 182.1875);
-vèrtex(420, 168.1875);
-vèrtex(427, 164.1875);
-vèrtex(431, 162.1875);
-vèrtex(439, 156.1875);
-vèrtex(443, 156.1875);
-vèrtex(442, 137.1875);
-vèrtex(442, 133.1875);
-vèrtex(450, 133.1875);
-vèrtex(459, 133.1875);
-vèrtex(480, 118.1875);
-vèrtex(484, 109.1875);
-final_forma();
-//roba Frida 1
-començaForma();
-omplir(0,128,255)
-vèrtex(506, 161.1875);
-vèrtex(512, 165.1875);
-vèrtex(524, 169.1875);
-vèrtex(535, 173.1875);
-vèrtex(548, 182.1875);
-vèrtex(559, 200.1875);
-vèrtex(549, 203.1875);
-vèrtex(534, 212.1875);
-vèrtex(528, 221.1875);
-vèrtex(533, 283.1875);
-vèrtex(522, 295.1875);
-vèrtex(509, 302.1875);
-vèrtex(490, 316.1875);
-vèrtex(481, 317.1875);
-vèrtex(481, 317.1875);
-vèrtex(455, 312.1875);
-vèrtex(444, 311.1875);
-vèrtex(421, 310.1875);
-vèrtex(411, 313.1875);
-vèrtex(394, 321.1875);
-vèrtex(386, 322.1875);
-vèrtex(376, 322.1875);
-vèrtex(378, 313.1875);
-vèrtex(382, 307.1875);
-vèrtex(388, 301.1875);
-vèrtex(396, 292.1875);
-vèrtex(404, 282.1875);
-vèrtex(413, 267.1875);
-vèrtex(412, 262.1875);
-vèrtex(407, 250.1875);
-vèrtex(404, 242.1875);
-vèrtex(404, 228.1875);
-vèrtex(411, 217.1875);
-vèrtex(409, 209.1875);
-vèrtex(406, 219.1875);
-vèrtex(401, 218.1875);
-vèrtex(372, 198.1875);
-vèrtex(374, 194.1875);
-vèrtex(381, 188.1875);
-vèrtex(389, 178.1875);
-vèrtex(401, 170.1875);
-vèrtex(409, 170.1875);
-vèrtex(418, 167.1875);
-vèrtex(425, 177.1875);
-vèrtex(428, 183.1875);
-vèrtex(436, 191.1875);
-vèrtex(447, 198.1875);
-vèrtex(454, 198.1875);
-vèrtex(460, 197.1875);
-vèrtex(489, 189.1875);
-vèrtex(499, 181.1875);
-vèrtex(501, 173.1875);
-vèrtex(506, 161.1875);
-final_forma();
-//vestit Frida 1
-començaForma();
-omplir(163,163,0)
-vèrtex(486, 319.1875);
-vèrtex(486, 319.1875);
-vèrtex(472, 316.1875);
-vèrtex(462, 314.1875);
-vèrtex(454, 312.1875);
-vèrtex(435, 310.1875);
-vèrtex(419, 310.1875);
-vèrtex(408, 314.1875);
-vèrtex(400, 316.1875);
-vèrtex(389, 323.1875);
-vèrtex(377, 324.1875);
-vèrtex(373, 331.1875);
-vèrtex(369, 347.1875);
-vèrtex(362, 353.1875);
-vèrtex(355, 362.1875);
-vèrtex(345, 378.1875);
-vèrtex(343, 391.1875);
-vèrtex(341, 404.1875);
-vèrtex(338, 417.1875);
-vèrtex(336, 420.1875);
-vèrtex(339, 427.1875);
-vèrtex(342, 435.1875);
-vèrtex(342, 443.1875);
-vèrtex(343, 455.1875);
-vèrtex(345, 464.1875);
-vèrtex(346, 476.1875);
-vèrtex(347, 491.1875);
-vèrtex(349, 501.1875);
-vèrtex(362, 508.1875);
-vèrtex(372, 513.1875);
-vèrtex(379, 513.1875);
-vèrtex(391, 512.1875);
-vèrtex(416, 509.1875);
-vèrtex(422, 509.1875);
-vèrtex(441, 516.1875);
-vèrtex(460, 519.1875);
-vèrtex(466, 520.1875);
-vèrtex(476, 524.1875);
-vèrtex(484, 522.1875);
-vèrtex(497, 521.1875);
-vèrtex(509, 519.1875);
-vèrtex(517, 519.1875);
-vèrtex(524, 519.1875);
-vèrtex(535, 516.1875);
-vèrtex(547, 514.1875);
-vèrtex(555, 513.1875);
-vèrtex(565, 508.1875);
-vèrtex(573, 508.1875);
-vèrtex(583, 505.1875);
-vèrtex(592, 506.1875);
-vèrtex(598, 507.1875);
-vèrtex(609, 501.1875);
-vèrtex(607, 484.1875);
-vèrtex(603, 454.1875);
-vèrtex(600, 444.1875);
-vèrtex(595, 438.1875);
-vèrtex(598, 415.1875);
-vèrtex(586, 392.1875);
-vèrtex(582, 372.1875);
-vèrtex(583, 364.1875);
-vèrtex(576, 360.1875);
-vèrtex(565, 344.1875);
-vèrtex(554, 329.1875);
-vèrtex(540, 318.1875);
-final_forma();
-//braç Frida 1
-omplir (255, 204, 153)
-començaForma();
-vèrtex(537, 286.1875);
-vèrtex(530, 271.1875);
-vèrtex(531, 267.1875);
-vèrtex(531, 251.1875);
-vèrtex(528, 234.1875);
-vèrtex(528, 223.1875);
-vèrtex(538, 213.1875);
-vèrtex(548, 205.1875);
-vèrtex(555, 202.1875);
-vèrtex(558, 212.1875);
-vèrtex(561, 233.1875);
-vèrtex(564, 255.1875);
-vèrtex(566, 278.1875);
-vèrtex(566, 290.1875);
-vèrtex(567, 300.1875);
-vèrtex(559, 304.1875);
-vèrtex(539, 317.1875);
-vèrtex(502, 334.1875);
-vèrtex(488, 340.1875);
-vèrtex(479, 349.1875);
-vèrtex(466, 357.1875);
-vèrtex(452, 362.1875);
-vèrtex(443, 362.1875);
-vèrtex(440, 359.1875);
-vèrtex(430, 356.1875);
-vèrtex(425, 353.1875);
-vèrtex(426, 350.1875);
-vèrtex(425, 345.1875);
-vèrtex(439, 342.1875);
-vèrtex(447, 336.1875);
-vèrtex(457, 330.1875);
-vèrtex(451, 328.1875);
-vèrtex(440, 333.1875);
-vèrtex(438, 328.1875);
-vèrtex(452, 320.1875);
-vèrtex(463, 318.1875);
-vèrtex(478, 323.1875);
-vèrtex(500, 309.1875);
-vèrtex(521, 296.1875);
-vèrtex(533, 286.1875);
-final_forma();
-//part de baix
-començaForma();
-omplir(224,224,224)
-vèrtex(608, 501.1875);
-vèrtex(614, 512.1875);
-vèrtex(617, 525.1875);
-vèrtex(619, 537.1875);
-vèrtex(624, 546.1875);
-vèrtex(630, 567.1875);
-vèrtex(636, 582.1875);
-vèrtex(633, 587.1875);
-vèrtex(624, 586.1875);
-vèrtex(623, 594.1875);
-vèrtex(615, 593.1875);
-vèrtex(607, 600.1875);
-vèrtex(598, 597.1875);
-vèrtex(590, 599.1875);
-vèrtex(582, 601.1875);
-vèrtex(568, 597.1875);
-vèrtex(565, 607.1875);
-vèrtex(559, 606.1875);
-vèrtex(553, 609.1875);
-vèrtex(537, 610.1875);
-vèrtex(531, 605.1875);
-vèrtex(520, 610.1875);
-vèrtex(511, 608.1875);
-vèrtex(506, 608.1875);
-vèrtex(496, 614.1875);
-vèrtex(493, 614.1875);
-vèrtex(488, 614.1875);
-vèrtex(478, 614.1875);
-vèrtex(471, 611.1875);
-vèrtex(465, 613.1875);
-vèrtex(453, 611.1875);
-vèrtex(443, 608.1875);
-vèrtex(435, 608.1875);
-vèrtex(428, 607.1875);
-vèrtex(419, 602.1875);
-vèrtex(411, 606.1875);
-vèrtex(400, 605.1875);
-vèrtex(389, 604.1875);
-vèrtex(379, 604.1875);
-vèrtex(365, 604.1875);
-vèrtex(358, 604.1875);
-vèrtex(347, 598.1875);
-vèrtex(335, 595.1875);
-vèrtex(342, 591.1875);
-vèrtex(347, 591.1875);
-vèrtex(354, 590.1875);
-vèrtex(363, 582.1875);
-vèrtex(362, 573.1875);
-vèrtex(367, 570.1875);
-vèrtex(359, 551.1875);
-vèrtex(357, 542.1875);
-vèrtex(355, 533.1875);
-vèrtex(353, 522.1875);
-vèrtex(346, 512.1875);
-vèrtex(348, 501.1875);
-vèrtex(358, 506.1875);
-vèrtex(365, 509.1875);
-vèrtex(378, 511.1875);
-vèrtex(388, 513.1875);
-vèrtex(412, 510.1875);
-vèrtex(432, 512.1875);
-vèrtex(444, 517.1875);
-vèrtex(463, 520.1875);
-vèrtex(470, 521.1875);
-vèrtex(476, 522.1875);
-vèrtex(503, 518.1875);
-vèrtex(519, 515.1875);
-vèrtex(541, 516.1875);
-vèrtex(550, 510.1875);
-vèrtex(564, 508.1875);
-vèrtex(588, 505.1875);
-vèrtex(594, 506.1875);
-vèrtex(599, 506.1875);
-vèrtex(607, 501.1875);
-final_forma();
-//vestit 1 firda 2
-començaForma();
-omplir (255, 234, 255)
-vèrtex(141, 280.1875);
-vèrtex(144, 276.1875);
-vèrtex(149, 278.1875);
-vèrtex(149, 275.1875);
-vèrtex(153, 277.1875);
-vèrtex(157, 282.1875);
-vèrtex(173, 287.1875);
-vèrtex(186, 287.1875);
-vèrtex(198, 285.1875);
-vèrtex(212, 278.1875);
-vèrtex(220, 278.1875);
-vèrtex(226, 276.1875);
-vèrtex(228, 277.1875);
-vèrtex(228, 279.1875);
-vèrtex(239, 286.1875);
-vèrtex(247, 294.1875);
-vèrtex(252, 299.1875);
-vèrtex(268, 317.1875);
-vèrtex(278, 321.1875);
-vèrtex(280, 326.1875);
-vèrtex(292, 337.1875);
-vèrtex(303, 346.1875);
-vèrtex(310, 357.1875);
-vèrtex(317, 366.1875);
-vèrtex(320, 378.1875);
-vèrtex(326, 389.1875);
-vèrtex(329, 401.1875);
-vèrtex(334, 410.1875);
-vèrtex(340, 430.1875);
-vèrtex(343, 449.1875);
-vèrtex(345, 469.1875);
-vèrtex(347, 486.1875);
-vèrtex(347, 502.1875);
-vèrtex(346, 513.1875);
-vèrtex(353, 521.1875);
-vèrtex(355, 539.1875);
-vèrtex(362, 557.1875);
-vèrtex(367, 569.1875);
-vèrtex(364, 574.1875);
-vèrtex(365, 579.1875);
-vèrtex(360, 585.1875);
-vèrtex(353, 592.1875);
-vèrtex(345, 592.1875);
-vèrtex(335, 593.1875);
-vèrtex(331, 599.1875);
-vèrtex(327, 597.1875);
-vèrtex(319, 600.1875);
-vèrtex(297, 604.1875);
-vèrtex(288, 603.1875);
-vèrtex(282, 604.1875);
-vèrtex(271, 602.1875);
-vèrtex(267, 605.1875);
-vèrtex(253, 603.1875);
-vèrtex(236, 602.1875);
-vèrtex(231, 607.1875);
-vèrtex(216, 610.1875);
-vèrtex(206, 606.1875);
-vèrtex(201, 607.1875);
-vèrtex(193, 609.1875);
-vèrtex(181, 611.1875);
-vèrtex(172, 611.1875);
-vèrtex(166, 610.1875);
-vèrtex(148, 607.1875);
-vèrtex(141, 612.1875);
-vèrtex(127, 609.1875);
-vèrtex(118, 608.1875);
-vèrtex(108, 606.1875);
-vèrtex(100, 604.1875);
-vèrtex(93, 599.1875);
-vèrtex(84, 600.1875);
-vèrtex(65, 591.1875);
-vèrtex(53, 585.1875);
-vèrtex(42, 575.1875);
-vèrtex(41, 572.1875);
-vèrtex(42, 567.1875);
-vèrtex(48, 555.1875);
-vèrtex(51, 551.1875);
-vèrtex(58, 535.1875);
-vèrtex(64, 526.1875);
-vèrtex(70, 512.1875);
-vèrtex(70, 508.1875);
-vèrtex(69, 499.1875);
-vèrtex(70, 490.1875);
-vèrtex(69, 477.1875);
-vèrtex(75, 467.1875);
-vèrtex(75, 447.1875);
-vèrtex(80, 432.1875);
-vèrtex(85, 417.1875);
-vèrtex(91, 400.1875);
-vèrtex(94, 390.1875);
-vèrtex(85, 370.1875);
-vèrtex(89, 357.1875);
-vèrtex(97, 332.1875);
-vèrtex(100, 319.1875);
-vèrtex(114, 302.1875);
-final_forma();
-//PART ARRIBA
-començaForma();
-omplir(202,202,202)
-vèrtex(95, 193.1875);
-vèrtex(90, 197.1875);
-vèrtex(97, 201.1875);
-vèrtex(100, 195.1875);
-vèrtex(106, 195.1875);
-vèrtex(108, 200.1875);
-vèrtex(112, 199.1875);
-vèrtex(118, 199.1875);
-vèrtex(119, 201.1875);
-vèrtex(121, 208.1875);
-vèrtex(122, 213.1875);
-vèrtex(126, 222.1875);
-vèrtex(132, 221.1875);
-vèrtex(127, 229.1875);
-vèrtex(130, 237.1875);
-vèrtex(130, 244.1875);
-vèrtex(132, 258.1875);
-vèrtex(133, 267.1875);
-vèrtex(134, 270.1875);
-vèrtex(140, 277.1875);
-vèrtex(152, 273.1875);
-vèrtex(157, 279.1875);
-vèrtex(163, 279.1875);
-vèrtex(170, 279.1875);
-vèrtex(174, 283.1875);
-vèrtex(176, 283.1875);
-vèrtex(184, 281.1875);
-vèrtex(191, 282.1875);
-vèrtex(198, 283.1875);
-vèrtex(203, 282.1875);
-vèrtex(214, 281.1875);
-vèrtex(223, 278.1875);
-vèrtex(228, 278.1875);
-vèrtex(237, 277.1875);
-vèrtex(240, 260.1875);
-vèrtex(244, 245.1875);
-vèrtex(244, 237.1875);
-vèrtex(247, 230.1875);
-vèrtex(246, 218.1875);
-vèrtex(243, 211.1875);
-vèrtex(248, 199.1875);
-vèrtex(250, 203.1875);
-vèrtex(255, 199.1875);
-vèrtex(256, 195.1875);
-vèrtex(261, 192.1875);
-vèrtex(261, 186.1875);
-vèrtex(265, 185.1875);
-vèrtex(262, 176.1875);
-vèrtex(246, 171.1875);
-vèrtex(236, 168.1875);
-vèrtex(223, 163.1875);
-vèrtex(209, 158.1875);
-vèrtex(200, 153.1875);
-vèrtex(199, 145.1875);
-vèrtex(204, 142.1875);
-vèrtex(206, 139.1875);
-vèrtex(201, 135.1875);
-vèrtex(199, 136.1875);
-vèrtex(192, 140.1875);
-vèrtex(185, 139.1875);
-vèrtex(173, 136.1875);
-vèrtex(162, 129.1875);
-vèrtex(161, 123.1875);
-vèrtex(161, 123.1875);
-vèrtex(154, 125.1875);
-vèrtex(154, 132.1875);
-vèrtex(161, 139.1875);
-vèrtex(160, 146.1875);
-vèrtex(156, 153.1875);
-vèrtex(150, 157.1875);
-vèrtex(142, 161.1875);
-vèrtex(133, 165.1875);
-vèrtex(119, 170.1875);
-vèrtex(109, 173.1875);
-vèrtex(104, 180.1875);
-vèrtex(95, 190.1875);
-final_forma();
+    function figuraNeutral(intensity) {
+  //pelo frida 1
+  fill(0,0,0)
+beginShape();
+  fill(96,96,96)
+vertex(484, 89.1875);
+vertex(481, 91.1875);
+vertex(480, 86.1875);
+vertex(479, 78.1875);
+vertex(478, 69.1875);
+vertex(470, 63.1875);
+vertex(459, 61.1875);
+vertex(450, 59.1875);
+vertex(442, 61.1875);
+vertex(435, 66.1875);
+vertex(430, 76.1875);
+vertex(425, 68.1875);
+vertex(426, 53.1875);
+vertex(426, 48.1875);
+vertex(432, 41.1875);
+vertex(440, 36.1875);
+vertex(447, 35.1875);
+vertex(455, 35.1875);
+vertex(463, 29.1875);
+vertex(472, 29.1875);
+vertex(489, 33.1875);
+vertex(496, 38.1875);
+vertex(502, 44.1875);
+vertex(503, 57.1875);
+vertex(504, 62.1875);
+vertex(504, 76.1875);
+vertex(502, 83.1875);
+vertex(497, 94.1875);
+vertex(496, 99.1875);
+vertex(493, 103.1875);
+vertex(495, 91.1875);
+vertex(489, 87.1875);
+vertex(485, 90.1875);
+endShape();
+  //cara de frida 1
+  beginShape();
+  fill(255,204,153)
+vertex(482, 92.1875);
+vertex(478, 71.1875);
+vertex(474, 62.1875);
+vertex(447, 60.1875);
+vertex(435, 63.1875);
+vertex(432, 74.1875);
+vertex(427, 101.1875);
+vertex(432, 115.1875);
+vertex(433, 123.1875);
+vertex(438, 129.1875);
+vertex(440, 130.1875);
+vertex(456, 132.1875);
+vertex(465, 127.1875);
+vertex(474, 121.1875);
+vertex(480, 107.1875);
+vertex(481, 91.1875);
+endShape();
+  //oreha frida 1
+  beginShape();
+   fill(255,204,153)
+vertex(481, 91.1875);
+vertex(489, 87.1875);
+vertex(495, 92.1875);
+vertex(494, 101.1875);
+vertex(490, 109.1875);
+vertex(486, 113.1875);
+vertex(482, 112.1875);
+vertex(482, 102.1875);
+endShape();
+  //cuello frida 1
+  beginShape();
+   fill(255,204,153)
+vertex(485, 111.1875);
+vertex(483, 118.1875);
+vertex(482, 126.1875);
+vertex(483, 140.1875);
+vertex(485, 145.1875);
+vertex(492, 157.1875);
+vertex(500, 159.1875);
+vertex(504, 162.1875);
+vertex(500, 175.1875);
+vertex(496, 181.1875);
+vertex(490, 187.1875);
+vertex(479, 193.1875);
+vertex(471, 197.1875);
+vertex(450, 200.1875);
+vertex(439, 195.1875);
+vertex(432, 190.1875);
+vertex(428, 182.1875);
+vertex(420, 168.1875);
+vertex(427, 164.1875);
+vertex(431, 162.1875);
+vertex(439, 156.1875);
+vertex(443, 156.1875);
+vertex(442, 137.1875);
+vertex(442, 133.1875);
+vertex(450, 133.1875);
+vertex(459, 133.1875);
+vertex(480, 118.1875);
+vertex(484, 109.1875);
+endShape();
+  //ropa frida 1
+  beginShape();
+  fill(0,128,255)
+vertex(506, 161.1875);
+vertex(512, 165.1875);
+vertex(524, 169.1875);
+vertex(535, 173.1875);
+vertex(548, 182.1875);
+vertex(559, 200.1875);
+vertex(549, 203.1875);
+vertex(534, 212.1875);
+vertex(528, 221.1875);
+vertex(533, 283.1875);
+vertex(522, 295.1875);
+vertex(509, 302.1875);
+vertex(490, 316.1875);
+vertex(481, 317.1875);
+vertex(481, 317.1875);
+vertex(455, 312.1875);
+vertex(444, 311.1875);
+vertex(421, 310.1875);
+vertex(411, 313.1875);
+vertex(394, 321.1875);
+vertex(386, 322.1875);
+vertex(376, 322.1875);
+vertex(378, 313.1875);
+vertex(382, 307.1875);
+vertex(388, 301.1875);
+vertex(396, 292.1875);
+vertex(404, 282.1875);
+vertex(413, 267.1875);
+vertex(412, 262.1875);
+vertex(407, 250.1875);
+vertex(404, 242.1875);
+vertex(404, 228.1875);
+vertex(411, 217.1875);
+vertex(409, 209.1875);
+vertex(406, 219.1875);
+vertex(401, 218.1875);
+vertex(372, 198.1875);
+vertex(374, 194.1875);
+vertex(381, 188.1875);
+vertex(389, 178.1875);
+vertex(401, 170.1875);
+vertex(409, 170.1875);
+vertex(418, 167.1875);
+vertex(425, 177.1875);
+vertex(428, 183.1875);
+vertex(436, 191.1875);
+vertex(447, 198.1875);
+vertex(454, 198.1875);
+vertex(460, 197.1875);
+vertex(489, 189.1875);
+vertex(499, 181.1875);
+vertex(501, 173.1875);
+vertex(506, 161.1875);
+endShape();
+  //vestido frida 1
+  beginShape();
+  fill(163,163,0)
+vertex(486, 319.1875);
+vertex(486, 319.1875);
+vertex(472, 316.1875);
+vertex(462, 314.1875);
+vertex(454, 312.1875);
+vertex(435, 310.1875);
+vertex(419, 310.1875);
+vertex(408, 314.1875);
+vertex(400, 316.1875);
+vertex(389, 323.1875);
+vertex(377, 324.1875);
+vertex(373, 331.1875);
+vertex(369, 347.1875);
+vertex(362, 353.1875);
+vertex(355, 362.1875);
+vertex(345, 378.1875);
+vertex(343, 391.1875);
+vertex(341, 404.1875);
+vertex(338, 417.1875);
+vertex(336, 420.1875);
+vertex(339, 427.1875);
+vertex(342, 435.1875);
+vertex(342, 443.1875);
+vertex(343, 455.1875);
+vertex(345, 464.1875);
+vertex(346, 476.1875);
+vertex(347, 491.1875);
+vertex(349, 501.1875);
+vertex(362, 508.1875);
+vertex(372, 513.1875);
+vertex(379, 513.1875);
+vertex(391, 512.1875);
+vertex(416, 509.1875);
+vertex(422, 509.1875);
+vertex(441, 516.1875);
+vertex(460, 519.1875);
+vertex(466, 520.1875);
+vertex(476, 524.1875);
+vertex(484, 522.1875);
+vertex(497, 521.1875);
+vertex(509, 519.1875);
+vertex(517, 519.1875);
+vertex(524, 519.1875);
+vertex(535, 516.1875);
+vertex(547, 514.1875);
+vertex(555, 513.1875);
+vertex(565, 508.1875);
+vertex(573, 508.1875);
+vertex(583, 505.1875);
+vertex(592, 506.1875);
+vertex(598, 507.1875);
+vertex(609, 501.1875);
+vertex(607, 484.1875);
+vertex(603, 454.1875);
+vertex(600, 444.1875);
+vertex(595, 438.1875);
+vertex(598, 415.1875);
+vertex(586, 392.1875);
+vertex(582, 372.1875);
+vertex(583, 364.1875);
+vertex(576, 360.1875);
+vertex(565, 344.1875);
+vertex(554, 329.1875);
+vertex(540, 318.1875);
+endShape();
+    //brazo frida 1
+   fill(255,204,153)
+  beginShape();
+vertex(537, 286.1875);
+vertex(530, 271.1875);
+vertex(531, 267.1875);
+vertex(531, 251.1875);
+vertex(528, 234.1875);
+vertex(528, 223.1875);
+vertex(538, 213.1875);
+vertex(548, 205.1875);
+vertex(555, 202.1875);
+vertex(558, 212.1875);
+vertex(561, 233.1875);
+vertex(564, 255.1875);
+vertex(566, 278.1875);
+vertex(566, 290.1875);
+vertex(567, 300.1875);
+vertex(559, 304.1875);
+vertex(539, 317.1875);
+vertex(502, 334.1875);
+vertex(488, 340.1875);
+vertex(479, 349.1875);
+vertex(466, 357.1875);
+vertex(452, 362.1875);
+vertex(443, 362.1875);
+vertex(440, 359.1875);
+vertex(430, 356.1875);
+vertex(425, 353.1875);
+vertex(426, 350.1875);
+vertex(425, 345.1875);
+vertex(439, 342.1875);
+vertex(447, 336.1875);
+vertex(457, 330.1875);
+vertex(451, 328.1875);
+vertex(440, 333.1875);
+vertex(438, 328.1875);
+vertex(452, 320.1875);
+vertex(463, 318.1875);
+vertex(478, 323.1875);
+vertex(500, 309.1875);
+vertex(521, 296.1875);
+vertex(533, 286.1875);
+endShape();
+//parte de abajo
+    beginShape();
+  fill(224,224,224)
+vertex(608, 501.1875);
+vertex(614, 512.1875);
+vertex(617, 525.1875);
+vertex(619, 537.1875);
+vertex(624, 546.1875);
+vertex(630, 567.1875);
+vertex(636, 582.1875);
+vertex(633, 587.1875);
+vertex(624, 586.1875);
+vertex(623, 594.1875);
+vertex(615, 593.1875);
+vertex(607, 600.1875);
+vertex(598, 597.1875);
+vertex(590, 599.1875);
+vertex(582, 601.1875);
+vertex(568, 597.1875);
+vertex(565, 607.1875);
+vertex(559, 606.1875);
+vertex(553, 609.1875);
+vertex(537, 610.1875);
+vertex(531, 605.1875);
+vertex(520, 610.1875);
+vertex(511, 608.1875);
+vertex(506, 608.1875);
+vertex(496, 614.1875);
+vertex(493, 614.1875);
+vertex(488, 614.1875);
+vertex(478, 614.1875);
+vertex(471, 611.1875);
+vertex(465, 613.1875);
+vertex(453, 611.1875);
+vertex(443, 608.1875);
+vertex(435, 608.1875);
+vertex(428, 607.1875);
+vertex(419, 602.1875);
+vertex(411, 606.1875);
+vertex(400, 605.1875);
+vertex(389, 604.1875);
+vertex(379, 604.1875);
+vertex(365, 604.1875);
+vertex(358, 604.1875);
+vertex(347, 598.1875);
+vertex(335, 595.1875);
+vertex(342, 591.1875);
+vertex(347, 591.1875);
+vertex(354, 590.1875);
+vertex(363, 582.1875);
+vertex(362, 573.1875);
+vertex(367, 570.1875);
+vertex(359, 551.1875);
+vertex(357, 542.1875);
+vertex(355, 533.1875);
+vertex(353, 522.1875);
+vertex(346, 512.1875);
+vertex(348, 501.1875);
+vertex(358, 506.1875);
+vertex(365, 509.1875);
+vertex(378, 511.1875);
+vertex(388, 513.1875);
+vertex(412, 510.1875);
+vertex(432, 512.1875);
+vertex(444, 517.1875);
+vertex(463, 520.1875);
+vertex(470, 521.1875);
+vertex(476, 522.1875);
+vertex(503, 518.1875);
+vertex(519, 515.1875);
+vertex(541, 516.1875);
+vertex(550, 510.1875);
+vertex(564, 508.1875);
+vertex(588, 505.1875);
+vertex(594, 506.1875);
+vertex(599, 506.1875);
+vertex(607, 501.1875);
+endShape();
+  //vestido 1 firda 2
+ beginShape();
+  fill(255,234,255)
+vertex(141, 280.1875);
+vertex(144, 276.1875);
+vertex(149, 278.1875);
+vertex(149, 275.1875);
+vertex(153, 277.1875);
+vertex(157, 282.1875);
+vertex(173, 287.1875);
+vertex(186, 287.1875);
+vertex(198, 285.1875);
+vertex(212, 278.1875);
+vertex(220, 278.1875);
+vertex(226, 276.1875);
+vertex(228, 277.1875);
+vertex(228, 279.1875);
+vertex(239, 286.1875);
+vertex(247, 294.1875);
+vertex(252, 299.1875);
+vertex(268, 317.1875);
+vertex(278, 321.1875);
+vertex(280, 326.1875);
+vertex(292, 337.1875);
+vertex(303, 346.1875);
+vertex(310, 357.1875);
+vertex(317, 366.1875);
+vertex(320, 378.1875);
+vertex(326, 389.1875);
+vertex(329, 401.1875);
+vertex(334, 410.1875);
+vertex(340, 430.1875);
+vertex(343, 449.1875);
+vertex(345, 469.1875);
+vertex(347, 486.1875);
+vertex(347, 502.1875);
+vertex(346, 513.1875);
+vertex(353, 521.1875);
+vertex(355, 539.1875);
+vertex(362, 557.1875);
+vertex(367, 569.1875);
+vertex(364, 574.1875);
+vertex(365, 579.1875);
+vertex(360, 585.1875);
+vertex(353, 592.1875);
+vertex(345, 592.1875);
+vertex(335, 593.1875);
+vertex(331, 599.1875);
+vertex(327, 597.1875);
+vertex(319, 600.1875);
+vertex(297, 604.1875);
+vertex(288, 603.1875);
+vertex(282, 604.1875);
+vertex(271, 602.1875);
+vertex(267, 605.1875);
+vertex(253, 603.1875);
+vertex(236, 602.1875);
+vertex(231, 607.1875);
+vertex(216, 610.1875);
+vertex(206, 606.1875);
+vertex(201, 607.1875);
+vertex(193, 609.1875);
+vertex(181, 611.1875);
+vertex(172, 611.1875);
+vertex(166, 610.1875);
+vertex(148, 607.1875);
+vertex(141, 612.1875);
+vertex(127, 609.1875);
+vertex(118, 608.1875);
+vertex(108, 606.1875);
+vertex(100, 604.1875);
+vertex(93, 599.1875);
+vertex(84, 600.1875);
+vertex(65, 591.1875);
+vertex(53, 585.1875);
+vertex(42, 575.1875);
+vertex(41, 572.1875);
+vertex(42, 567.1875);
+vertex(48, 555.1875);
+vertex(51, 551.1875);
+vertex(58, 535.1875);
+vertex(64, 526.1875);
+vertex(70, 512.1875);
+vertex(70, 508.1875);
+vertex(69, 499.1875);
+vertex(70, 490.1875);
+vertex(69, 477.1875);
+vertex(75, 467.1875);
+vertex(75, 447.1875);
+vertex(80, 432.1875);
+vertex(85, 417.1875);
+vertex(91, 400.1875);
+vertex(94, 390.1875);
+vertex(85, 370.1875);
+vertex(89, 357.1875);
+vertex(97, 332.1875);
+vertex(100, 319.1875);
+vertex(114, 302.1875);
+endShape();
+//PARTE ARRIBA
+  beginShape();
+  fill(202,202,202)
+vertex(95, 193.1875);
+vertex(90, 197.1875);
+vertex(97, 201.1875);
+vertex(100, 195.1875);
+vertex(106, 195.1875);
+vertex(108, 200.1875);
+vertex(112, 199.1875);
+vertex(118, 199.1875);
+vertex(119, 201.1875);
+vertex(121, 208.1875);
+vertex(122, 213.1875);
+vertex(126, 222.1875);
+vertex(132, 221.1875);
+vertex(127, 229.1875);
+vertex(130, 237.1875);
+vertex(130, 244.1875);
+vertex(132, 258.1875);
+vertex(133, 267.1875);
+vertex(134, 270.1875);
+vertex(140, 277.1875);
+vertex(152, 273.1875);
+vertex(157, 279.1875);
+vertex(163, 279.1875);
+vertex(170, 279.1875);
+vertex(174, 283.1875);
+vertex(176, 283.1875);
+vertex(184, 281.1875);
+vertex(191, 282.1875);
+vertex(198, 283.1875);
+vertex(203, 282.1875);
+vertex(214, 281.1875);
+vertex(223, 278.1875);
+vertex(228, 278.1875);
+vertex(237, 277.1875);
+vertex(240, 260.1875);
+vertex(244, 245.1875);
+vertex(244, 237.1875);
+vertex(247, 230.1875);
+vertex(246, 218.1875);
+vertex(243, 211.1875);
+vertex(248, 199.1875);
+vertex(250, 203.1875);
+vertex(255, 199.1875);
+vertex(256, 195.1875);
+vertex(261, 192.1875);
+vertex(261, 186.1875);
+vertex(265, 185.1875);
+vertex(262, 176.1875);
+vertex(246, 171.1875);
+vertex(236, 168.1875);
+vertex(223, 163.1875);
+vertex(209, 158.1875);
+vertex(200, 153.1875);
+vertex(199, 145.1875);
+vertex(204, 142.1875);
+vertex(206, 139.1875);
+vertex(201, 135.1875);
+vertex(199, 136.1875);
+vertex(192, 140.1875);
+vertex(185, 139.1875);
+vertex(173, 136.1875);
+vertex(162, 129.1875);
+vertex(161, 123.1875);
+vertex(161, 123.1875);
+vertex(154, 125.1875);
+vertex(154, 132.1875);
+vertex(161, 139.1875);
+vertex(160, 146.1875);
+vertex(156, 153.1875);
+vertex(150, 157.1875);
+vertex(142, 161.1875);
+vertex(133, 165.1875);
+vertex(119, 170.1875);
+vertex(109, 173.1875);
+vertex(104, 180.1875);
+vertex(95, 190.1875);
+endShape();
 //MANGA 1
-començaForma();
-omplir (181, 170, 148)
-vèrtex(92, 198.1875);
-vèrtex(84, 211.1875);
-vèrtex(79, 231.1875);
-vèrtex(76, 239.1875);
-vèrtex(76, 247.1875);
-vèrtex(78, 247.1875);
-vèrtex(76, 258.1875);
-vèrtex(77, 258.1875);
-vèrtex(77, 268.1875);
-vèrtex(79, 269.1875);
-vèrtex(79, 275.1875);
-vèrtex(79, 286.1875);
-vèrtex(81, 303.1875);
-vèrtex(88, 310.1875);
-vèrtex(96, 314.1875);
-vèrtex(102, 314.1875);
-vèrtex(105, 308.1875);
-vèrtex(112, 302.1875);
-vèrtex(115, 299.1875);
-vèrtex(108, 294.1875);
-vèrtex(112, 288.1875);
-vèrtex(114, 288.1875);
-vèrtex(123, 281.1875);
-vèrtex(127, 277.1875);
-vèrtex(135, 277.1875);
-vèrtex(133, 267.1875);
-vèrtex(130, 254.1875);
-vèrtex(131, 247.1875);
-vèrtex(132, 242.1875);
-vèrtex(130, 228.1875);
-vèrtex(127, 222.1875);
-vèrtex(121, 218.1875);
-vèrtex(120, 206.1875);
-vèrtex(118, 198.1875);
-vèrtex(114, 199.1875);
-vèrtex(111, 200.1875);
-vèrtex(107, 193.1875);
-vèrtex(103, 197.1875);
-vèrtex(97, 197.1875);
-vèrtex(91, 197.1875);
-final_forma();
-//MINIMANGA
-començaForma();
-vèrtex(113, 297.1875);
-vèrtex(107, 291.1875);
-vèrtex(117, 288.1875);
-vèrtex(121, 281.1875);
-vèrtex(134, 276.1875);
-vèrtex(141, 276.1875);
-vèrtex(142, 281.1875);
-vèrtex(128, 287.1875);
-vèrtex(122, 292.1875);
-vèrtex(118, 297.1875);
-vèrtex(111, 297.1875);
-final_forma();
-//MANO FRIDA 2
-començaForma();
-omplir (255, 204, 153)
-vèrtex(142, 283.1875);
-vèrtex(150, 291.1875);
-vèrtex(158, 300.1875);
-vèrtex(173, 311.1875);
-vèrtex(178, 317.1875);
-vèrtex(187, 319.1875);
-vèrtex(195, 319.1875);
-vèrtex(204, 324.1875);
-vèrtex(216, 333.1875);
-vèrtex(223, 342.1875);
-vèrtex(222, 344.1875);
-vèrtex(217, 343.1875);
-vèrtex(208, 337.1875);
-vèrtex(199, 330.1875);
-vèrtex(201, 334.1875);
-vèrtex(207, 337.1875);
-vèrtex(213, 341.1875);
-vèrtex(221, 343.1875);
-vèrtex(223, 347.1875);
-vèrtex(220, 348.1875);
-vèrtex(209, 342.1875);
-vèrtex(198, 333.1875);
-vèrtex(221, 348.1875);
-vèrtex(222, 351.1875);
-vèrtex(216, 350.1875);
-vèrtex(200, 344.1875);
-vèrtex(192, 337.1875);
-vèrtex(206, 344.1875);
-vèrtex(216, 349.1875);
-vèrtex(217, 353.1875);
-vèrtex(215, 354.1875);
-vèrtex(207, 351.1875);
-vèrtex(200, 350.1875);
-vèrtex(187, 343.1875);
-vèrtex(200, 347.1875);
-vèrtex(200, 351.1875);
-vèrtex(192, 351.1875);
-vèrtex(183, 346.1875);
-vèrtex(179, 341.1875);
-vèrtex(174, 341.1875);
-vèrtex(169, 331.1875);
-vèrtex(165, 331.1875);
-vèrtex(156, 326.1875);
-vèrtex(150, 321.1875);
-vèrtex(133, 311.1875);
-vèrtex(119, 301.1875);
-vèrtex(122, 293.1875);
-vèrtex(129, 289.1875);
-vèrtex(139, 282.1875);
-final_forma();
-//cara Frida 2
-començaForma();
-omplir (255, 204, 153)
-vèrtex(157, 102.1875);
-vèrtex(150, 98.1875);
-vèrtex(147, 102.1875);
-vèrtex(145, 106.1875);
-vèrtex(146, 110.1875);
-vèrtex(149, 112.1875);
-vèrtex(149, 118.1875);
-vèrtex(153, 122.1875);
-vèrtex(160, 122.1875);
-vèrtex(162, 128.1875);
-vèrtex(167, 133.1875);
-vèrtex(173, 137.1875);
-vèrtex(182, 139.1875);
-vèrtex(189, 139.1875);
-vèrtex(198, 137.1875);
-vèrtex(203, 133.1875);
-vèrtex(206, 128.1875);
-vèrtex(207, 123.1875);
-vèrtex(209, 113.1875);
-vèrtex(212, 106.1875);
-vèrtex(211, 99.1875);
-vèrtex(210, 88.1875);
-vèrtex(208, 78.1875);
-vèrtex(202, 72.1875);
-vèrtex(195, 68.1875);
-vèrtex(190, 67.1875);
-vèrtex(189, 69.1875);
-vèrtex(185, 69.1875);
-vèrtex(177, 69.1875);
-vèrtex(177, 72.1875);
-vèrtex(172, 73.1875);
-vèrtex(168, 76.1875);
-vèrtex(166, 78.1875);
-vèrtex(162, 79.1875);
-vèrtex(164, 81.1875);
-vèrtex(164, 86.1875);
-vèrtex(160, 94.1875);
-vèrtex(158, 99.1875);
-final_forma();
-//pel Frida 2
-començaForma();
-omplir(0,0,0)
-vèrtex(146, 113.1875);
-vèrtex(142, 100.1875);
-vèrtex(140, 89.1875);
-vèrtex(136, 86.1875);
-vèrtex(140, 75.1875);
-vèrtex(138, 66.1875);
-vèrtex(143, 55.1875);
-vèrtex(146, 46.1875);
-vèrtex(155, 41.1875);
-vèrtex(160, 39.1875);
-vèrtex(167, 39.1875);
-vèrtex(174, 40.1875);
-vèrtex(182, 39.1875);
-vèrtex(192, 35.1875);
-vèrtex(199, 35.1875);
-vèrtex(208, 38.1875);
-vèrtex(209, 42.1875);
-vèrtex(215, 50.1875);
-vèrtex(218, 61.1875);
-vèrtex(216, 73.1875);
-vèrtex(213, 83.1875);
-vèrtex(208, 77.1875);
-vèrtex(203, 74.1875);
-vèrtex(194, 68.1875);
-vèrtex(188, 70.1875);
-vèrtex(179, 70.1875);
-vèrtex(177, 73.1875);
-vèrtex(170, 71.1875);
-vèrtex(165, 78.1875);
-vèrtex(162, 84.1875);
-vèrtex(162, 87.1875);
-vèrtex(161, 92.1875);
-vèrtex(158, 102.1875);
-vèrtex(152, 100.1875);
-vèrtex(147, 103.1875);
-vèrtex(147, 113.1875);
-final_forma();
-//màniga
-començaForma();
-omplir (181, 170, 148)
-vèrtex(244, 278.1875);
-vèrtex(245, 284.1875);
-vèrtex(248, 286.1875);
-vèrtex(255, 286.1875);
-vèrtex(261, 286.1875);
-vèrtex(268, 285.1875);
-vèrtex(277, 279.1875);
-vèrtex(284, 275.1875);
-vèrtex(282, 272.1875);
-vèrtex(275, 272.1875);
-vèrtex(270, 273.1875);
-vèrtex(262, 273.1875);
-vèrtex(253, 276.1875);
-vèrtex(243, 277.1875);
-final_forma();
-// MANS AGARRADES
-començaForma();
-omplir (255, 204, 153)
-vèrtex(401, 219.1875);
-vèrtex(402, 240.1875);
-vèrtex(401, 275.1875);
-vèrtex(400, 278.1875);
-vèrtex(398, 283.1875);
-vèrtex(396, 288.1875);
-vèrtex(393, 295.1875);
-vèrtex(390, 300.1875);
-vèrtex(386, 303.1875);
-vèrtex(383, 306.1875);
-vèrtex(378, 309.1875);
-vèrtex(376, 312.1875);
-vèrtex(370, 315.1875);
-vèrtex(365, 319.1875);
-vèrtex(362, 323.1875);
-vèrtex(362, 326.1875);
-vèrtex(347, 350.1875);
-vèrtex(344, 346.1875);
-vèrtex(344, 342.1875);
-vèrtex(343, 337.1875);
-vèrtex(341, 336.1875);
-vèrtex(340, 337.1875);
-vèrtex(340, 341.1875);
-vèrtex(340, 345.1875);
-vèrtex(340, 348.1875);
-vèrtex(340, 350.1875);
-vèrtex(342, 351.1875);
-vèrtex(343, 351.1875);
-vèrtex(346, 351.1875);
-vèrtex(339, 351.1875);
-vèrtex(339, 346.1875);
-vèrtex(339, 338.1875);
-vèrtex(339, 334.1875);
-vèrtex(339, 331.1875);
-vèrtex(337, 329.1875);
-vèrtex(335, 331.1875);
-vèrtex(333, 338.1875);
-vèrtex(333, 343.1875);
-vèrtex(333, 349.1875);
-vèrtex(337, 351.1875);
-vèrtex(333, 349.1875);
-vèrtex(328, 350.1875);
-vèrtex(328, 340.1875);
-vèrtex(329, 333.1875);
-vèrtex(332, 330.1875);
-vèrtex(333, 334.1875);
-vèrtex(333, 340.1875);
-vèrtex(333, 349.1875);
-vèrtex(325, 350.1875);
-vèrtex(321, 348.1875);
-vèrtex(322, 343.1875);
-vèrtex(323, 334.1875);
-vèrtex(329, 333.1875);
-vèrtex(328, 339.1875);
-vèrtex(326, 351.1875);
-vèrtex(320, 347.1875);
-vèrtex(323, 333.1875);
-vèrtex(321, 332.1875);
-vèrtex(317, 334.1875);
-vèrtex(313, 334.1875);
-vèrtex(314, 329.1875);
-vèrtex(314, 329.1875);
-vèrtex(317, 328.1875);
-vèrtex(335, 315.1875);
-vèrtex(338, 315.1875);
-vèrtex(340, 313.1875);
-vèrtex(344, 313.1875);
-vèrtex(347, 309.1875);
-vèrtex(353, 303.1875);
-vèrtex(357, 296.1875);
-vèrtex(360, 288.1875);
-vèrtex(363, 285.1875);
-vèrtex(365, 280.1875);
-vèrtex(369, 275.1875);
-vèrtex(372, 270.1875);
-vèrtex(375, 259.1875);
-vèrtex(375, 252.1875);
-vèrtex(374, 246.1875);
-vèrtex(374, 236.1875);
-vèrtex(374, 222.1875);
-vèrtex(374, 212.1875);
-vèrtex(377, 201.1875);
-vèrtex(387, 211.1875);
-vèrtex(396, 216.1875);
-vèrtex(400, 217.1875);
-final_forma();
-//mans unides
-començaForma();
-omplir (255, 204, 153)
-vèrtex(286, 276.1875);
-vèrtex(292, 281.1875);
-vèrtex(299, 287.1875);
-vèrtex(306, 295.1875);
-vèrtex(312, 301.1875);
-vèrtex(318, 307.1875);
-vèrtex(328, 312.1875);
-vèrtex(334, 316.1875);
-vèrtex(341, 318.1875);
-vèrtex(351, 319.1875);
-vèrtex(358, 323.1875);
-vèrtex(364, 331.1875);
-vèrtex(365, 342.1875);
-vèrtex(364, 350.1875);
-vèrtex(362, 352.1875);
-vèrtex(359, 352.1875);
-vèrtex(359, 346.1875);
-vèrtex(360, 340.1875);
-vèrtex(358, 334.1875);
-vèrtex(354, 327.1875);
-vèrtex(351, 322.1875);
-vèrtex(356, 331.1875);
-vèrtex(358, 339.1875);
-vèrtex(360, 346.1875);
-vèrtex(360, 351.1875);
-vèrtex(358, 355.1875);
-vèrtex(353, 356.1875);
-vèrtex(354, 347.1875);
-vèrtex(353, 339.1875);
-vèrtex(349, 332.1875);
-vèrtex(344, 328.1875);
-vèrtex(352, 335.1875);
-vèrtex(352, 341.1875);
-vèrtex(353, 354.1875);
-vèrtex(350, 354.1875);
-vèrtex(347, 347.1875);
-vèrtex(347, 340.1875);
-vèrtex(342, 331.1875);
-vèrtex(338, 329.1875);
-vèrtex(335, 331.1875);
-vèrtex(331, 329.1875);
-vèrtex(329, 332.1875);
-vèrtex(324, 332.1875);
-vèrtex(322, 332.1875);
-vèrtex(318, 325.1875);
-vèrtex(309, 322.1875);
-vèrtex(295, 319.1875);
-vèrtex(289, 314.1875);
-vèrtex(279, 308.1875);
-vèrtex(275, 304.1875);
-vèrtex(265, 297.1875);
-vèrtex(255, 289.1875);
-vèrtex(252, 287.1875);
-vèrtex(258, 286.1875);
-vèrtex(262, 286.1875);
-vèrtex(267, 286.1875);
-vèrtex(272, 282.1875);
-vèrtex(280, 275.1875);
-vèrtex(286, 275.1875);
-final_forma();
-//manga
-començaForma();
-omplir (181, 170, 148)
-vèrtex(265, 183.1875);
-vèrtex(270, 189.1875);
-vèrtex(274, 197.1875);
-vèrtex(280, 207.1875);
-vèrtex(284, 218.1875);
-vèrtex(292, 232.1875);
-vèrtex(293, 235.1875);
-vèrtex(293, 238.1875);
-vèrtex(296, 242.1875);
-vèrtex(294, 246.1875);
-vèrtex(298, 259.1875);
-vèrtex(297, 262.1875);
-vèrtex(297, 268.1875);
-vèrtex(299, 276.1875);
-vèrtex(290, 277.1875);
-vèrtex(285, 273.1875);
-vèrtex(275, 272.1875);
-vèrtex(269, 273.1875);
-vèrtex(264, 273.1875);
-vèrtex(257, 274.1875);
-vèrtex(252, 275.1875);
-vèrtex(243, 277.1875);
-vèrtex(238, 281.1875);
-vèrtex(234, 283.1875);
-vèrtex(234, 274.1875);
-vèrtex(237, 270.1875);
-vèrtex(238, 264.1875);
-vèrtex(241, 254.1875);
-vèrtex(243, 247.1875);
-vèrtex(242, 242.1875);
-vèrtex(244, 238.1875);
-vèrtex(244, 235.1875);
-vèrtex(245, 235.1875);
-vèrtex(248, 231.1875);
-vèrtex(247, 219.1875);
-vèrtex(245, 216.1875);
-vèrtex(245, 210.1875);
-vèrtex(248, 203.1875);
-vèrtex(253, 203.1875);
-vèrtex(258, 199.1875);
-vèrtex(255, 196.1875);
-vèrtex(259, 195.1875);
-vèrtex(261, 191.1875);
-vèrtex(262, 186.1875);
-vèrtex(265, 183.1875);
-final_forma();
-//cor de petó
-començaForma();
-omplir (229, 145, 37)
-vèrtex(182, 170.1875);
-vèrtex(184, 168.1875);
-vèrtex(184, 155.1875);
-vèrtex(187, 166.1875);
-vèrtex(189, 166.1875);
-vèrtex(188, 168.1875);
-vèrtex(190, 171.1875);
-vèrtex(194, 170.1875);
-vèrtex(196, 176.1875);
-vèrtex(202, 183.1875);
-vèrtex(205, 183.1875);
-vèrtex(208, 186.1875);
-vèrtex(211, 182.1875);
-vèrtex(214, 182.1875);
-vèrtex(219, 170.1875);
-vèrtex(220, 180.1875);
-vèrtex(219, 183.1875);
-vèrtex(222, 184.1875);
-vèrtex(220, 189.1875);
-vèrtex(222, 193.1875);
-vèrtex(228, 193.1875);
-vèrtex(234, 194.1875);
-vèrtex(232, 196.1875);
-vèrtex(238, 198.1875);
-vèrtex(244, 199.1875);
-vèrtex(242, 201.1875);
-vèrtex(240, 204.1875);
-vèrtex(241, 206.1875);
-vèrtex(240, 212.1875);
-vèrtex(240, 218.1875);
-vèrtex(239, 220.1875);
-vèrtex(239, 224.1875);
-vèrtex(239, 229.1875);
-vèrtex(238, 232.1875);
-vèrtex(238, 237.1875);
-vèrtex(236, 240.1875);
-vèrtex(230, 246.1875);
-vèrtex(227, 245.1875);
-vèrtex(225, 249.1875);
-vèrtex(225, 255.1875);
-vèrtex(221, 249.1875);
-vèrtex(220, 245.1875);
-vèrtex(216, 246.1875);
-vèrtex(212, 248.1875);
-vèrtex(210, 251.1875);
-vèrtex(210, 255.1875);
-vèrtex(207, 258.1875);
-vèrtex(206, 252.1875);
-vèrtex(204, 245.1875);
-vèrtex(202, 241.1875);
-vèrtex(199, 241.1875);
-vèrtex(195, 237.1875);
-vèrtex(191, 235.1875);
-vèrtex(187, 231.1875);
-vèrtex(185, 233.1875);
-vèrtex(180, 230.1875);
-vèrtex(182, 228.1875);
-vèrtex(179, 222.1875);
-vèrtex(179, 218.1875);
-vèrtex(183, 221.1875);
-vèrtex(188, 228.1875);
-vèrtex(194, 229.1875);
-vèrtex(204, 231.1875);
-vèrtex(213, 231.1875);
-vèrtex(223, 229.1875);
-vèrtex(226, 219.1875);
-vèrtex(223, 209.1875);
-vèrtex(219, 198.1875);
-vèrtex(211, 189.1875);
-vèrtex(204, 186.1875);
-vèrtex(198, 181.1875);
-vèrtex(197, 180.1875);
-final_forma();
-//CORAZON INTERNO
-començaForma();
-omplir (186, 23, 23)
-vèrtex(187, 190.1875);
-vèrtex(183, 190.1875);
-vèrtex(186, 192.1875);
-vèrtex(186, 194.1875);
-vèrtex(184, 200.1875);
-vèrtex(175, 200.1875);
-vèrtex(181, 201.1875);
-vèrtex(184, 203.1875);
-vèrtex(182, 206.1875);
-vèrtex(179, 209.1875);
-vèrtex(179, 214.1875);
-vèrtex(176, 219.1875);
-vèrtex(181, 218.1875);
-vèrtex(183, 224.1875);
-vèrtex(188, 230.1875);
-vèrtex(193, 230.1875);
-vèrtex(202, 232.1875);
-vèrtex(211, 233.1875);
-vèrtex(222, 230.1875);
-vèrtex(225, 222.1875);
-vèrtex(224, 213.1875);
-vèrtex(220, 204.1875);
-vèrtex(219, 198.1875);
-vèrtex(215, 194.1875);
-vèrtex(209, 190.1875);
-vèrtex(205, 188.1875);
-vèrtex(202, 186.1875);
-vèrtex(200, 182.1875);
-vèrtex(199, 169.1875);
-vèrtex(197, 165.1875);
-vèrtex(197, 159.1875);
-vèrtex(195, 166.1875);
-vèrtex(195, 178.1875);
-vèrtex(196, 184.1875);
-vèrtex(191, 180.1875);
-vèrtex(185, 172.1875);
-vèrtex(179, 163.1875);
-vèrtex(176, 154.1875);
-vèrtex(178, 145.1875);
-vèrtex(175, 145.1875);
-vèrtex(173, 141.1875);
-vèrtex(172, 143.1875);
-vèrtex(169, 139.1875);
-vèrtex(169, 147.1875);
-vèrtex(172, 153.1875);
-vèrtex(174, 161.1875);
-vèrtex(178, 169.1875);
-vèrtex(184, 180.1875);
-vèrtex(188, 190.1875);
-final_forma();
-//branques
-començaForma();
-omplir (197, 104, 104)
-vèrtex(188, 193.1875);
-vèrtex(193, 190.1875);
-vèrtex(191, 185.1875);
-vèrtex(190, 181.1875);
-vèrtex(195, 176.1875);
-vèrtex(202, 170.1875);
-vèrtex(208, 170.1875);
-vèrtex(212, 169.1875);
-vèrtex(207, 166.1875);
-vèrtex(200, 167.1875);
-vèrtex(194, 170.1875);
-vèrtex(192, 173.1875);
-vèrtex(187, 178.1875);
-vèrtex(183, 175.1875);
-vèrtex(174, 170.1875);
-vèrtex(168, 168.1875);
-vèrtex(163, 168.1875);
-vèrtex(157, 167.1875);
-vèrtex(151, 166.1875);
-vèrtex(147, 161.1875);
-vèrtex(147, 151.1875);
-vèrtex(153, 146.1875);
-vèrtex(159, 143.1875);
-vèrtex(151, 143.1875);
-vèrtex(147, 147.1875);
-vèrtex(143, 154.1875);
-vèrtex(139, 154.1875);
-vèrtex(136, 153.1875);
-vèrtex(129, 154.1875);
-vèrtex(122, 157.1875);
-vèrtex(115, 161.1875);
-vèrtex(110, 162.1875);
-vèrtex(102, 170.1875);
-vèrtex(96, 176.1875);
-vèrtex(94, 187.1875);
-vèrtex(93, 193.1875);
-vèrtex(94, 189.1875);
-vèrtex(96, 182.1875);
-vèrtex(99, 176.1875);
-vèrtex(106, 170.1875);
-vèrtex(112, 163.1875);
-vèrtex(119, 160.1875);
-vèrtex(128, 159.1875);
-vèrtex(138, 156.1875);
-vèrtex(143, 155.1875);
-vèrtex(144, 162.1875);
-vèrtex(147, 165.1875);
-vèrtex(149, 169.1875);
-vèrtex(156, 170.1875);
-vèrtex(163, 170.1875);
-vèrtex(169, 171.1875);
-vèrtex(177, 175.1875);
-vèrtex(182, 180.1875);
-vèrtex(185, 184.1875);
-vèrtex(185, 184.1875);
-vèrtex(187, 191.1875);
-final_forma();
-//accessoris
-començaForma();
-omplir (245, 230, 80)
-vèrtex(409, 170.1875);
-vèrtex(417, 167.1875);
-vèrtex(421, 174.1875);
-vèrtex(426, 184.1875);
-vèrtex(434, 190.1875);
-vèrtex(444, 196.1875);
-vèrtex(456, 199.1875);
-vèrtex(472, 199.1875);
-vèrtex(492, 191.1875);
-vèrtex(500, 177.1875);
-vèrtex(506, 163.1875);
-vèrtex(511, 165.1875);
-vèrtex(513, 167.1875);
-vèrtex(510, 177.1875);
-vèrtex(505, 190.1875);
-vèrtex(495, 194.1875);
-vèrtex(483, 204.1875);
-vèrtex(463, 209.1875);
-vèrtex(456, 209.1875);
-vèrtex(445, 207.1875);
-vèrtex(433, 202.1875);
-vèrtex(427, 196.1875);
-vèrtex(417, 184.1875);
-vèrtex(410, 170.1875);
-final_forma();
-començaForma();
-vèrtex(407, 224.1875);
-vèrtex(403, 222.1875);
-vèrtex(404, 209.1875);
-vèrtex(396, 198.1875);
-vèrtex(394, 191.1875);
-vèrtex(385, 180.1875);
-vèrtex(401, 170.1875);
-vèrtex(401, 175.1875);
-vèrtex(406, 183.1875);
-vèrtex(411, 193.1875);
-vèrtex(411, 202.1875);
-vèrtex(411, 217.1875);
-vèrtex(406, 225.1875);
-final_forma();
-començaForma();
-vèrtex(528, 171.1875);
-vèrtex(543, 178.1875);
-vèrtex(542, 185.1875);
-vèrtex(537, 191.1875);
-vèrtex(530, 200.1875);
-vèrtex(525, 208.1875);
-vèrtex(524, 217.1875);
-vèrtex(523, 226.1875);
-vèrtex(523, 236.1875);
-vèrtex(525, 248.1875);
-vèrtex(525, 258.1875);
-vèrtex(524, 264.1875);
-vèrtex(525, 282.1875);
-vèrtex(527, 289.1875);
-vèrtex(521, 294.1875);
-vèrtex(515, 296.1875);
-vèrtex(504, 297.1875);
-vèrtex(489, 298.1875);
-vèrtex(480, 298.1875);
-vèrtex(465, 301.1875);
-vèrtex(455, 301.1875);
-vèrtex(448, 299.1875);
-vèrtex(437, 297.1875);
-vèrtex(429, 297.1875);
-vèrtex(422, 296.1875);
-vèrtex(416, 295.1875);
-vèrtex(408, 295.1875);
-vèrtex(401, 295.1875);
-vèrtex(393, 297.1875);
-vèrtex(400, 291.1875);
-vèrtex(407, 288.1875);
-vèrtex(419, 286.1875);
-vèrtex(428, 286.1875);
-vèrtex(438, 286.1875);
-vèrtex(453, 287.1875);
-vèrtex(462, 286.1875);
-vèrtex(472, 285.1875);
-vèrtex(482, 280.1875);
-vèrtex(489, 281.1875);
-vèrtex(501, 283.1875);
-vèrtex(508, 285.1875);
-vèrtex(515, 288.1875);
-vèrtex(513, 279.1875);
-vèrtex(511, 267.1875);
-vèrtex(511, 259.1875);
-vèrtex(511, 253.1875);
-vèrtex(508, 241.1875);
-vèrtex(506, 224.1875);
-vèrtex(506, 214.1875);
-vèrtex(509, 204.1875);
-vèrtex(514, 198.1875);
-vèrtex(525, 183.1875);
-vèrtex(529, 171.1875);
-final_forma();
-//cor viu
-començaForma();
-omplir(255,0,0)
-vèrtex(202, 145.1875);
-vèrtex(209, 145.1875);
-vèrtex(217, 146.1875);
-vèrtex(224, 148.1875);
-vèrtex(232, 152.1875);
-vèrtex(240, 155.1875);
-vèrtex(249, 158.1875);
-vèrtex(255, 160.1875);
-vèrtex(263, 162.1875);
-vèrtex(270, 163.1875);
-vèrtex(274, 164.1875);
-vèrtex(280, 165.1875);
-vèrtex(287, 165.1875);
-vèrtex(295, 165.1875);
-vèrtex(300, 165.1875);
-vèrtex(308, 165.1875);
-vèrtex(316, 164.1875);
-vèrtex(331, 161.1875);
-vèrtex(343, 160.1875);
-vèrtex(351, 158.1875);
-vèrtex(358, 157.1875);
-vèrtex(367, 154.1875);
-vèrtex(375, 154.1875);
-vèrtex(387, 155.1875);
-vèrtex(392, 155.1875);
-vèrtex(401, 155.1875);
-vèrtex(411, 157.1875);
-vèrtex(419, 162.1875);
-vèrtex(423, 166.1875);
-vèrtex(430, 173.1875);
-vèrtex(439, 177.1875);
-vèrtex(449, 180.1875);
-vèrtex(453, 184.1875);
-vèrtex(454, 191.1875);
-vèrtex(456, 197.1875);
-vèrtex(454, 204.1875);
-vèrtex(452, 210.1875);
-vèrtex(452, 218.1875);
-vèrtex(451, 225.1875);
-vèrtex(457, 235.1875);
-vèrtex(465, 239.1875);
-vèrtex(475, 242.1875);
-vèrtex(488, 240.1875);
-vèrtex(495, 236.1875);
-vèrtex(498, 229.1875);
-vèrtex(497, 222.1875);
-vèrtex(491, 215.1875);
-vèrtex(489, 209.1875);
-vèrtex(487, 199.1875);
-vèrtex(490, 198.1875);
-vèrtex(490, 194.1875);
-vèrtex(486, 194.1875);
-vèrtex(484, 197.1875);
-vèrtex(484, 192.1875);
-vèrtex(478, 191.1875);
-vèrtex(478, 186.1875);
-vèrtex(474, 184.1875);
-vèrtex(465, 188.1875);
-vèrtex(468, 183.1875);
-vèrtex(469, 180.1875);
-vèrtex(479, 177.1875);
-vèrtex(484, 177.1875);
-vèrtex(491, 177.1875);
-vèrtex(496, 178.1875);
-vèrtex(500, 176.1875);
-vèrtex(489, 173.1875);
-vèrtex(478, 172.1875);
-vèrtex(469, 174.1875);
-vèrtex(471, 169.1875);
-vèrtex(468, 172.1875);
-vèrtex(468, 165.1875);
-vèrtex(464, 174.1875);
-vèrtex(461, 178.1875);
-vèrtex(457, 178.1875);
-vèrtex(455, 173.1875);
-vèrtex(450, 161.1875);
-vèrtex(453, 154.1875);
-vèrtex(456, 147.1875);
-vèrtex(451, 150.1875);
-vèrtex(454, 144.1875);
-vèrtex(450, 147.1875);
-vèrtex(452, 139.1875);
-vèrtex(449, 143.1875);
-vèrtex(445, 140.1875);
-vèrtex(446, 151.1875);
-vèrtex(448, 158.1875);
-vèrtex(450, 168.1875);
-vèrtex(452, 177.1875);
-vèrtex(446, 176.1875);
-vèrtex(439, 174.1875);
-vèrtex(433, 169.1875);
-vèrtex(426, 164.1875);
-vèrtex(420, 160.1875);
-vèrtex(410, 155.1875);
-vèrtex(402, 152.1875);
-vèrtex(395, 151.1875);
-vèrtex(385, 151.1875);
-vèrtex(377, 150.1875);
-vèrtex(369, 150.1875);
-vèrtex(362, 153.1875);
-vèrtex(350, 153.1875);
-vèrtex(344, 154.1875);
-vèrtex(337, 155.1875);
-vèrtex(329, 155.1875);
-vèrtex(319, 155.1875);
-vèrtex(309, 156.1875);
-vèrtex(299, 159.1875);
-vèrtex(292, 159.1875);
-vèrtex(285, 159.1875);
-vèrtex(281, 159.1875);
-vèrtex(269, 158.1875);
-vèrtex(257, 154.1875);
-vèrtex(246, 153.1875);
-vèrtex(239, 149.1875);
-vèrtex(231, 146.1875);
-vèrtex(224, 143.1875);
-vèrtex(215, 141.1875);
-vèrtex(206, 141.1875);
-vèrtex(202, 142.1875);
-final_forma();
-//boca 1
-començaForma();
-omplir(156,76,0)
-vèrtex(446, 114.1875);
-vèrtex(443, 114.1875);
-vèrtex(440, 117.1875);
-vèrtex(440, 120.1875);
-vèrtex(444, 123.1875);
-vèrtex(448, 122.1875);
-vèrtex(456, 119.1875);
-vèrtex(452, 116.1875);
-vèrtex(447, 114.1875);
-final_forma();
-començaForma();
-vèrtex(186, 123.1875);
-vèrtex(190, 120.1875);
-vèrtex(196, 119.1875);
-vèrtex(200, 119.1875);
-vèrtex(203, 121.1875);
-vèrtex(200, 124.1875);
-vèrtex(196, 125.1875);
-vèrtex(190, 125.1875);
-vèrtex(187, 123.1875);
-final_forma();
-//nariz 1
-començaForma();
-omplir (255, 204, 153)
-vèrtex(448, 94.1875);
-vèrtex(447, 101.1875);
-vèrtex(452, 104.1875);
-vèrtex(455, 107.1875);
-vèrtex(453, 109.1875);
-vèrtex(448, 107.1875);
-vèrtex(442, 107.1875);
-vèrtex(442, 98.1875);
-vèrtex(443, 93.1875);
-final_forma();
-començaForma();
-vèrtex(196, 98.1875);
-vèrtex(198, 104.1875);
-vèrtex(201, 111.1875);
-vèrtex(199, 113.1875);
-vèrtex(196, 113.1875);
-vèrtex(193, 113.1875);
-vèrtex(190, 113.1875);
-vèrtex(189, 108.1875);
-final_forma();
-//Ull
-començaForma();
-omplir(0,0,0)
-vèrtex(453, 94.1875);
-vèrtex(457, 89.1875);
-vèrtex(464, 90.1875);
-vèrtex(467, 94.1875);
-vèrtex(461, 97.1875);
-vèrtex(454, 96.1875);
-final_forma();
-començaForma();
-vèrtex(431, 95.1875);
-vèrtex(433, 92.1875);
-vèrtex(436, 90.1875);
-vèrtex(440, 90.1875);
-vèrtex(443, 93.1875);
-vèrtex(443, 98.1875);
-vèrtex(439, 99.1875);
-vèrtex(436, 98.1875);
-vèrtex(431, 96.1875);
-final_forma();
-començaForma();
-vèrtex(174, 99.1875);
-vèrtex(183, 96.1875);
-vèrtex(188, 99.1875);
-vèrtex(185, 105.1875);
-vèrtex(181, 104.1875);
-vèrtex(178, 104.1875);
-vèrtex(175, 97.1875);
-final_forma();
-començaForma();
-vèrtex(198, 102.1875);
-vèrtex(201, 97.1875);
-vèrtex(205, 96.1875);
-vèrtex(209, 99.1875);
-vèrtex(207, 103.1875);
-vèrtex(201, 104.1875);
-vèrtex(198, 103.1875);
-final_forma();
-//entrecreuament
-començaForma();
-vèrtex(427, 89.1875);
-vèrtex(429, 85.1875);
-vèrtex(434, 85.1875);
-vèrtex(439, 84.1875);
-vèrtex(443, 86.1875);
-vèrtex(445, 87.1875);
-vèrtex(450, 85.1875);
-vèrtex(457, 83.1875);
-vèrtex(463, 83.1875);
-vèrtex(470, 85.1875);
-vèrtex(471, 87.1875);
-vèrtex(466, 87.1875);
-vèrtex(462, 87.1875);
-vèrtex(455, 88.1875);
-vèrtex(447, 92.1875);
-vèrtex(441, 90.1875);
-vèrtex(437, 89.1875);
-vèrtex(432, 89.1875);
-vèrtex(427, 89.1875);
-final_forma();
-començaForma();
-vèrtex(172, 94.1875);
-vèrtex(177, 90.1875);
-vèrtex(186, 89.1875);
-vèrtex(191, 90.1875);
-vèrtex(193, 93.1875);
-vèrtex(198, 90.1875);
-vèrtex(206, 89.1875);
-vèrtex(211, 91.1875);
-vèrtex(210, 92.1875);
-vèrtex(205, 92.1875);
-vèrtex(201, 94.1875);
-vèrtex(198, 96.1875);
-vèrtex(194, 98.1875);
-vèrtex(189, 95.1875);
-vèrtex(185, 93.1875);
-vèrtex(180, 93.1875);
-vèrtex(175, 94.1875);
-final_forma();
-}
-</script>
+  beginShape();
+    fill(181,170,148)
+vertex(92, 198.1875);
+vertex(84, 211.1875);
+vertex(79, 231.1875);
+vertex(76, 239.1875);
+vertex(76, 247.1875);
+vertex(78, 247.1875);
+vertex(76, 258.1875);
+vertex(77, 258.1875);
+vertex(77, 268.1875);
+vertex(79, 269.1875);
+vertex(79, 275.1875);
+vertex(79, 286.1875);
+vertex(81, 303.1875);
+vertex(88, 310.1875);
+vertex(96, 314.1875);
+vertex(102, 314.1875);
+vertex(105, 308.1875);
+vertex(112, 302.1875);
+vertex(115, 299.1875);
+vertex(108, 294.1875);
+vertex(112, 288.1875);
+vertex(114, 288.1875);
+vertex(123, 281.1875);
+vertex(127, 277.1875);
+vertex(135, 277.1875);
+vertex(133, 267.1875);
+vertex(130, 254.1875);
+vertex(131, 247.1875);
+vertex(132, 242.1875);
+vertex(130, 228.1875);
+vertex(127, 222.1875);
+vertex(121, 218.1875);
+vertex(120, 206.1875);
+vertex(118, 198.1875);
+vertex(114, 199.1875);
+vertex(111, 200.1875);
+vertex(107, 193.1875);
+vertex(103, 197.1875);
+vertex(97, 197.1875);
+vertex(91, 197.1875);
+endShape();
+  //MINIMANGA
+  beginShape();
+vertex(113, 297.1875);
+vertex(107, 291.1875);
+vertex(117, 288.1875);
+vertex(121, 281.1875);
+vertex(134, 276.1875);
+vertex(141, 276.1875);
+vertex(142, 281.1875);
+vertex(128, 287.1875);
+vertex(122, 292.1875);
+vertex(118, 297.1875);
+vertex(111, 297.1875);
+endShape();
+  //MANO FRIDA 2
+beginShape();
+  fill(255,204,153)
+vertex(142, 283.1875);
+vertex(150, 291.1875);
+vertex(158, 300.1875);
+vertex(173, 311.1875);
+vertex(178, 317.1875);
+vertex(187, 319.1875);
+vertex(195, 319.1875);
+vertex(204, 324.1875);
+vertex(216, 333.1875);
+vertex(223, 342.1875);
+vertex(222, 344.1875);
+vertex(217, 343.1875);
+vertex(208, 337.1875);
+vertex(199, 330.1875);
+vertex(201, 334.1875);
+vertex(207, 337.1875);
+vertex(213, 341.1875);
+vertex(221, 343.1875);
+vertex(223, 347.1875);
+vertex(220, 348.1875);
+vertex(209, 342.1875);
+vertex(198, 333.1875);
+vertex(221, 348.1875);
+vertex(222, 351.1875);
+vertex(216, 350.1875);
+vertex(200, 344.1875);
+vertex(192, 337.1875);
+vertex(206, 344.1875);
+vertex(216, 349.1875);
+vertex(217, 353.1875);
+vertex(215, 354.1875);
+vertex(207, 351.1875);
+vertex(200, 350.1875);
+vertex(187, 343.1875);
+vertex(200, 347.1875);
+vertex(200, 351.1875);
+vertex(192, 351.1875);
+vertex(183, 346.1875);
+vertex(179, 341.1875);
+vertex(174, 341.1875);
+vertex(169, 331.1875);
+vertex(165, 331.1875);
+vertex(156, 326.1875);
+vertex(150, 321.1875);
+vertex(133, 311.1875);
+vertex(119, 301.1875);
+vertex(122, 293.1875);
+vertex(129, 289.1875);
+vertex(139, 282.1875);
+endShape();
+  //cara frida 2
+  beginShape();
+  fill(255,204,153)
+vertex(157, 102.1875);
+vertex(150, 98.1875);
+vertex(147, 102.1875);
+vertex(145, 106.1875);
+vertex(146, 110.1875);
+vertex(149, 112.1875);
+vertex(149, 118.1875);
+vertex(153, 122.1875);
+vertex(160, 122.1875);
+vertex(162, 128.1875);
+vertex(167, 133.1875);
+vertex(173, 137.1875);
+vertex(182, 139.1875);
+vertex(189, 139.1875);
+vertex(198, 137.1875);
+vertex(203, 133.1875);
+vertex(206, 128.1875);
+vertex(207, 123.1875);
+vertex(209, 113.1875);
+vertex(212, 106.1875);
+vertex(211, 99.1875);
+vertex(210, 88.1875);
+vertex(208, 78.1875);
+vertex(202, 72.1875);
+vertex(195, 68.1875);
+vertex(190, 67.1875);
+vertex(189, 69.1875);
+vertex(185, 69.1875);
+vertex(177, 69.1875);
+vertex(177, 72.1875);
+vertex(172, 73.1875);
+vertex(168, 76.1875);
+vertex(166, 78.1875);
+vertex(162, 79.1875);
+vertex(164, 81.1875);
+vertex(164, 86.1875);
+vertex(160, 94.1875);
+vertex(158, 99.1875);
+endShape();
+  //pelo frida 2
+  beginShape();
+  fill(0,0,0)
+vertex(146, 113.1875);
+vertex(142, 100.1875);
+vertex(140, 89.1875);
+vertex(136, 86.1875);
+vertex(140, 75.1875);
+vertex(138, 66.1875);
+vertex(143, 55.1875);
+vertex(146, 46.1875);
+vertex(155, 41.1875);
+vertex(160, 39.1875);
+vertex(167, 39.1875);
+vertex(174, 40.1875);
+vertex(182, 39.1875);
+vertex(192, 35.1875);
+vertex(199, 35.1875);
+vertex(208, 38.1875);
+vertex(209, 42.1875);
+vertex(215, 50.1875);
+vertex(218, 61.1875);
+vertex(216, 73.1875);
+vertex(213, 83.1875);
+vertex(208, 77.1875);
+vertex(203, 74.1875);
+vertex(194, 68.1875);
+vertex(188, 70.1875);
+vertex(179, 70.1875);
+vertex(177, 73.1875);
+vertex(170, 71.1875);
+vertex(165, 78.1875);
+vertex(162, 84.1875);
+vertex(162, 87.1875);
+vertex(161, 92.1875);
+vertex(158, 102.1875);
+vertex(152, 100.1875);
+vertex(147, 103.1875);
+vertex(147, 113.1875);
+endShape();
+  //maniga
+  beginShape();
+  fill(181,170,148)
+vertex(244, 278.1875);
+vertex(245, 284.1875);
+vertex(248, 286.1875);
+vertex(255, 286.1875);
+vertex(261, 286.1875);
+vertex(268, 285.1875);
+vertex(277, 279.1875);
+vertex(284, 275.1875);
+vertex(282, 272.1875);
+vertex(275, 272.1875);
+vertex(270, 273.1875);
+vertex(262, 273.1875);
+vertex(253, 276.1875);
+vertex(243, 277.1875);
+endShape();
+// MANOS AGARRADAS
+beginShape();
+  fill(255,204,153)
+vertex(401, 219.1875);
+vertex(402, 240.1875);
+vertex(401, 275.1875);
+vertex(400, 278.1875);
+vertex(398, 283.1875);
+vertex(396, 288.1875);
+vertex(393, 295.1875);
+vertex(390, 300.1875);
+vertex(386, 303.1875);
+vertex(383, 306.1875);
+vertex(378, 309.1875);
+vertex(376, 312.1875);
+vertex(370, 315.1875);
+vertex(365, 319.1875);
+vertex(362, 323.1875);
+vertex(362, 326.1875);
+vertex(347, 350.1875);
+vertex(344, 346.1875);
+vertex(344, 342.1875);
+vertex(343, 337.1875);
+vertex(341, 336.1875);
+vertex(340, 337.1875);
+vertex(340, 341.1875);
+vertex(340, 345.1875);
+vertex(340, 348.1875);
+vertex(340, 350.1875);
+vertex(342, 351.1875);
+vertex(343, 351.1875);
+vertex(346, 351.1875);
+vertex(339, 351.1875);
+vertex(339, 346.1875);
+vertex(339, 338.1875);
+vertex(339, 334.1875);
+vertex(339, 331.1875);
+vertex(337, 329.1875);
+vertex(335, 331.1875);
+vertex(333, 338.1875);
+vertex(333, 343.1875);
+vertex(333, 349.1875);
+vertex(337, 351.1875);
+vertex(333, 349.1875);
+vertex(328, 350.1875);
+vertex(328, 340.1875);
+vertex(329, 333.1875);
+vertex(332, 330.1875);
+vertex(333, 334.1875);
+vertex(333, 340.1875);
+vertex(333, 349.1875);
+vertex(325, 350.1875);
+vertex(321, 348.1875);
+vertex(322, 343.1875);
+vertex(323, 334.1875);
+vertex(329, 333.1875);
+vertex(328, 339.1875);
+vertex(326, 351.1875);
+vertex(320, 347.1875);
+vertex(323, 333.1875);
+vertex(321, 332.1875);
+vertex(317, 334.1875);
+vertex(313, 334.1875);
+vertex(314, 329.1875);
+vertex(314, 329.1875);
+vertex(317, 328.1875);
+vertex(335, 315.1875);
+vertex(338, 315.1875);
+vertex(340, 313.1875);
+vertex(344, 313.1875);
+vertex(347, 309.1875);
+vertex(353, 303.1875);
+vertex(357, 296.1875);
+vertex(360, 288.1875);
+vertex(363, 285.1875);
+vertex(365, 280.1875);
+vertex(369, 275.1875);
+vertex(372, 270.1875);
+vertex(375, 259.1875);
+vertex(375, 252.1875);
+vertex(374, 246.1875);
+vertex(374, 236.1875);
+vertex(374, 222.1875);
+vertex(374, 212.1875);
+vertex(377, 201.1875);
+vertex(387, 211.1875);
+vertex(396, 216.1875);
+vertex(400, 217.1875);
+endShape();
+  //manos unidas
+  beginShape();
+  fill(255,204,153)
+vertex(286, 276.1875);
+vertex(292, 281.1875);
+vertex(299, 287.1875);
+vertex(306, 295.1875);
+vertex(312, 301.1875);
+vertex(318, 307.1875);
+vertex(328, 312.1875);
+vertex(334, 316.1875);
+vertex(341, 318.1875);
+vertex(351, 319.1875);
+vertex(358, 323.1875);
+vertex(364, 331.1875);
+vertex(365, 342.1875);
+vertex(364, 350.1875);
+vertex(362, 352.1875);
+vertex(359, 352.1875);
+vertex(359, 346.1875);
+vertex(360, 340.1875);
+vertex(358, 334.1875);
+vertex(354, 327.1875);
+vertex(351, 322.1875);
+vertex(356, 331.1875);
+vertex(358, 339.1875);
+vertex(360, 346.1875);
+vertex(360, 351.1875);
+vertex(358, 355.1875);
+vertex(353, 356.1875);
+vertex(354, 347.1875);
+vertex(353, 339.1875);
+vertex(349, 332.1875);
+vertex(344, 328.1875);
+vertex(352, 335.1875);
+vertex(352, 341.1875);
+vertex(353, 354.1875);
+vertex(350, 354.1875);
+vertex(347, 347.1875);
+vertex(347, 340.1875);
+vertex(342, 331.1875);
+vertex(338, 329.1875);
+vertex(335, 331.1875);
+vertex(331, 329.1875);
+vertex(329, 332.1875);
+vertex(324, 332.1875);
+vertex(322, 332.1875);
+vertex(318, 325.1875);
+vertex(309, 322.1875);
+vertex(295, 319.1875);
+vertex(289, 314.1875);
+vertex(279, 308.1875);
+vertex(275, 304.1875);
+vertex(265, 297.1875);
+vertex(255, 289.1875);
+vertex(252, 287.1875);
+vertex(258, 286.1875);
+vertex(262, 286.1875);
+vertex(267, 286.1875);
+vertex(272, 282.1875);
+vertex(280, 275.1875);
+vertex(286, 275.1875);
+endShape();
+  //manga
+  beginShape();
+    fill(181,170,148)
+vertex(265, 183.1875);
+vertex(270, 189.1875);
+vertex(274, 197.1875);
+vertex(280, 207.1875);
+vertex(284, 218.1875);
+vertex(292, 232.1875);
+vertex(293, 235.1875);
+vertex(293, 238.1875);
+vertex(296, 242.1875);
+vertex(294, 246.1875);
+vertex(298, 259.1875);
+vertex(297, 262.1875);
+vertex(297, 268.1875);
+vertex(299, 276.1875);
+vertex(290, 277.1875);
+vertex(285, 273.1875);
+vertex(275, 272.1875);
+vertex(269, 273.1875);
+vertex(264, 273.1875);
+vertex(257, 274.1875);
+vertex(252, 275.1875);
+vertex(243, 277.1875);
+vertex(238, 281.1875);
+vertex(234, 283.1875);
+vertex(234, 274.1875);
+vertex(237, 270.1875);
+vertex(238, 264.1875);
+vertex(241, 254.1875);
+vertex(243, 247.1875);
+vertex(242, 242.1875);
+vertex(244, 238.1875);
+vertex(244, 235.1875);
+vertex(245, 235.1875);
+vertex(248, 231.1875);
+vertex(247, 219.1875);
+vertex(245, 216.1875);
+vertex(245, 210.1875);
+vertex(248, 203.1875);
+vertex(253, 203.1875);
+vertex(258, 199.1875);
+vertex(255, 196.1875);
+vertex(259, 195.1875);
+vertex(261, 191.1875);
+vertex(262, 186.1875);
+vertex(265, 183.1875);
+endShape();
+  //corazon pecho
+  beginShape();
+  fill(229,145,37)
+vertex(182, 170.1875);
+vertex(184, 168.1875);
+vertex(184, 155.1875);
+vertex(187, 166.1875);
+vertex(189, 166.1875);
+vertex(188, 168.1875);
+vertex(190, 171.1875);
+vertex(194, 170.1875);
+vertex(196, 176.1875);
+vertex(202, 183.1875);
+vertex(205, 183.1875);
+vertex(208, 186.1875);
+vertex(211, 182.1875);
+vertex(214, 182.1875);
+vertex(219, 170.1875);
+vertex(220, 180.1875);
+vertex(219, 183.1875);
+vertex(222, 184.1875);
+vertex(220, 189.1875);
+vertex(222, 193.1875);
+vertex(228, 193.1875);
+vertex(234, 194.1875);
+vertex(232, 196.1875);
+vertex(238, 198.1875);
+vertex(244, 199.1875);
+vertex(242, 201.1875);
+vertex(240, 204.1875);
+vertex(241, 206.1875);
+vertex(240, 212.1875);
+vertex(240, 218.1875);
+vertex(239, 220.1875);
+vertex(239, 224.1875);
+vertex(239, 229.1875);
+vertex(238, 232.1875);
+vertex(238, 237.1875);
+vertex(236, 240.1875);
+vertex(230, 246.1875);
+vertex(227, 245.1875);
+vertex(225, 249.1875);
+vertex(225, 255.1875);
+vertex(221, 249.1875);
+vertex(220, 245.1875);
+vertex(216, 246.1875);
+vertex(212, 248.1875);
+vertex(210, 251.1875);
+vertex(210, 255.1875);
+vertex(207, 258.1875);
+vertex(206, 252.1875);
+vertex(204, 245.1875);
+vertex(202, 241.1875);
+vertex(199, 241.1875);
+vertex(195, 237.1875);
+vertex(191, 235.1875);
+vertex(187, 231.1875);
+vertex(185, 233.1875);
+vertex(180, 230.1875);
+vertex(182, 228.1875);
+vertex(179, 222.1875);
+vertex(179, 218.1875);
+vertex(183, 221.1875);
+vertex(188, 228.1875);
+vertex(194, 229.1875);
+vertex(204, 231.1875);
+vertex(213, 231.1875);
+vertex(223, 229.1875);
+vertex(226, 219.1875);
+vertex(223, 209.1875);
+vertex(219, 198.1875);
+vertex(211, 189.1875);
+vertex(204, 186.1875);
+vertex(198, 181.1875);
+vertex(197, 180.1875);
+endShape();
+  //CORAZON INTERNO
+  beginShape();
+ fill(186,23,23)
+vertex(187, 190.1875);
+vertex(183, 190.1875);
+vertex(186, 192.1875);
+vertex(186, 194.1875);
+vertex(184, 200.1875);
+vertex(175, 200.1875);
+vertex(181, 201.1875);
+vertex(184, 203.1875);
+vertex(182, 206.1875);
+vertex(179, 209.1875);
+vertex(179, 214.1875);
+vertex(176, 219.1875);
+vertex(181, 218.1875);
+vertex(183, 224.1875);
+vertex(188, 230.1875);
+vertex(193, 230.1875);
+vertex(202, 232.1875);
+vertex(211, 233.1875);
+vertex(222, 230.1875);
+vertex(225, 222.1875);
+vertex(224, 213.1875);
+vertex(220, 204.1875);
+vertex(219, 198.1875);
+vertex(215, 194.1875);
+vertex(209, 190.1875);
+vertex(205, 188.1875);
+vertex(202, 186.1875);
+vertex(200, 182.1875);
+vertex(199, 169.1875);
+vertex(197, 165.1875);
+vertex(197, 159.1875);
+vertex(195, 166.1875);
+vertex(195, 178.1875);
+vertex(196, 184.1875);
+vertex(191, 180.1875);
+vertex(185, 172.1875);
+vertex(179, 163.1875);
+vertex(176, 154.1875);
+vertex(178, 145.1875);
+vertex(175, 145.1875);
+vertex(173, 141.1875);
+vertex(172, 143.1875);
+vertex(169, 139.1875);
+vertex(169, 147.1875);
+vertex(172, 153.1875);
+vertex(174, 161.1875);
+vertex(178, 169.1875);
+vertex(184, 180.1875);
+vertex(188, 190.1875);
+endShape();
+  //branqueas
+  beginShape();
+  fill(197,104,104)
+vertex(188, 193.1875);
+vertex(193, 190.1875);
+vertex(191, 185.1875);
+vertex(190, 181.1875);
+vertex(195, 176.1875);
+vertex(202, 170.1875);
+vertex(208, 170.1875);
+vertex(212, 169.1875);
+vertex(207, 166.1875);
+vertex(200, 167.1875);
+vertex(194, 170.1875);
+vertex(192, 173.1875);
+vertex(187, 178.1875);
+vertex(183, 175.1875);
+vertex(174, 170.1875);
+vertex(168, 168.1875);
+vertex(163, 168.1875);
+vertex(157, 167.1875);
+vertex(151, 166.1875);
+vertex(147, 161.1875);
+vertex(147, 151.1875);
+vertex(153, 146.1875);
+vertex(159, 143.1875);
+vertex(151, 143.1875);
+vertex(147, 147.1875);
+vertex(143, 154.1875);
+vertex(139, 154.1875);
+vertex(136, 153.1875);
+vertex(129, 154.1875);
+vertex(122, 157.1875);
+vertex(115, 161.1875);
+vertex(110, 162.1875);
+vertex(102, 170.1875);
+vertex(96, 176.1875);
+vertex(94, 187.1875);
+vertex(93, 193.1875);
+vertex(94, 189.1875);
+vertex(96, 182.1875);
+vertex(99, 176.1875);
+vertex(106, 170.1875);
+vertex(112, 163.1875);
+vertex(119, 160.1875);
+vertex(128, 159.1875);
+vertex(138, 156.1875);
+vertex(143, 155.1875);
+vertex(144, 162.1875);
+vertex(147, 165.1875);
+vertex(149, 169.1875);
+vertex(156, 170.1875);
+vertex(163, 170.1875);
+vertex(169, 171.1875);
+vertex(177, 175.1875);
+vertex(182, 180.1875);
+vertex(185, 184.1875);
+vertex(185, 184.1875);
+vertex(187, 191.1875);
+endShape();
+  //accesorios
+  beginShape();
+  fill(245,230,80)
+vertex(409, 170.1875);
+vertex(417, 167.1875);
+vertex(421, 174.1875);
+vertex(426, 184.1875);
+vertex(434, 190.1875);
+vertex(444, 196.1875);
+vertex(456, 199.1875);
+vertex(472, 199.1875);
+vertex(492, 191.1875);
+vertex(500, 177.1875);
+vertex(506, 163.1875);
+vertex(511, 165.1875);
+vertex(513, 167.1875);
+vertex(510, 177.1875);
+vertex(505, 190.1875);
+vertex(495, 194.1875);
+vertex(483, 204.1875);
+vertex(463, 209.1875);
+vertex(456, 209.1875);
+vertex(445, 207.1875);
+vertex(433, 202.1875);
+vertex(427, 196.1875);
+vertex(417, 184.1875);
+vertex(410, 170.1875);
+endShape();
+  beginShape();
+vertex(407, 224.1875);
+vertex(403, 222.1875);
+vertex(404, 209.1875);
+vertex(396, 198.1875);
+vertex(394, 191.1875);
+vertex(385, 180.1875);
+vertex(401, 170.1875);
+vertex(401, 175.1875);
+vertex(406, 183.1875);
+vertex(411, 193.1875);
+vertex(411, 202.1875);
+vertex(411, 217.1875);
+vertex(406, 225.1875);
+endShape();
+  beginShape();
+vertex(528, 171.1875);
+vertex(543, 178.1875);
+vertex(542, 185.1875);
+vertex(537, 191.1875);
+vertex(530, 200.1875);
+vertex(525, 208.1875);
+vertex(524, 217.1875);
+vertex(523, 226.1875);
+vertex(523, 236.1875);
+vertex(525, 248.1875);
+vertex(525, 258.1875);
+vertex(524, 264.1875);
+vertex(525, 282.1875);
+vertex(527, 289.1875);
+vertex(521, 294.1875);
+vertex(515, 296.1875);
+vertex(504, 297.1875);
+vertex(489, 298.1875);
+vertex(480, 298.1875);
+vertex(465, 301.1875);
+vertex(455, 301.1875);
+vertex(448, 299.1875);
+vertex(437, 297.1875);
+vertex(429, 297.1875);
+vertex(422, 296.1875);
+vertex(416, 295.1875);
+vertex(408, 295.1875);
+vertex(401, 295.1875);
+vertex(393, 297.1875);
+vertex(400, 291.1875);
+vertex(407, 288.1875);
+vertex(419, 286.1875);
+vertex(428, 286.1875);
+vertex(438, 286.1875);
+vertex(453, 287.1875);
+vertex(462, 286.1875);
+vertex(472, 285.1875);
+vertex(482, 280.1875);
+vertex(489, 281.1875);
+vertex(501, 283.1875);
+vertex(508, 285.1875);
+vertex(515, 288.1875);
+vertex(513, 279.1875);
+vertex(511, 267.1875);
+vertex(511, 259.1875);
+vertex(511, 253.1875);
+vertex(508, 241.1875);
+vertex(506, 224.1875);
+vertex(506, 214.1875);
+vertex(509, 204.1875);
+vertex(514, 198.1875);
+vertex(525, 183.1875);
+vertex(529, 171.1875);
+endShape();
+  //corazon vivo
+  beginShape();
+  fill(255,0,0)
+vertex(202, 145.1875);
+vertex(209, 145.1875);
+vertex(217, 146.1875);
+vertex(224, 148.1875);
+vertex(232, 152.1875);
+vertex(240, 155.1875);
+vertex(249, 158.1875);
+vertex(255, 160.1875);
+vertex(263, 162.1875);
+vertex(270, 163.1875);
+vertex(274, 164.1875);
+vertex(280, 165.1875);
+vertex(287, 165.1875);
+vertex(295, 165.1875);
+vertex(300, 165.1875);
+vertex(308, 165.1875);
+vertex(316, 164.1875);
+vertex(331, 161.1875);
+vertex(343, 160.1875);
+vertex(351, 158.1875);
+vertex(358, 157.1875);
+vertex(367, 154.1875);
+vertex(375, 154.1875);
+vertex(387, 155.1875);
+vertex(392, 155.1875);
+vertex(401, 155.1875);
+vertex(411, 157.1875);
+vertex(419, 162.1875);
+vertex(423, 166.1875);
+vertex(430, 173.1875);
+vertex(439, 177.1875);
+vertex(449, 180.1875);
+vertex(453, 184.1875);
+vertex(454, 191.1875);
+vertex(456, 197.1875);
+vertex(454, 204.1875);
+vertex(452, 210.1875);
+vertex(452, 218.1875);
+vertex(451, 225.1875);
+vertex(457, 235.1875);
+vertex(465, 239.1875);
+vertex(475, 242.1875);
+vertex(488, 240.1875);
+vertex(495, 236.1875);
+vertex(498, 229.1875);
+vertex(497, 222.1875);
+vertex(491, 215.1875);
+vertex(489, 209.1875);
+vertex(487, 199.1875);
+vertex(490, 198.1875);
+vertex(490, 194.1875);
+vertex(486, 194.1875);
+vertex(484, 197.1875);
+vertex(484, 192.1875);
+vertex(478, 191.1875);
+vertex(478, 186.1875);
+vertex(474, 184.1875);
+vertex(465, 188.1875);
+vertex(468, 183.1875);
+vertex(469, 180.1875);
+vertex(479, 177.1875);
+vertex(484, 177.1875);
+vertex(491, 177.1875);
+vertex(496, 178.1875);
+vertex(500, 176.1875);
+vertex(489, 173.1875);
+vertex(478, 172.1875);
+vertex(469, 174.1875);
+vertex(471, 169.1875);
+vertex(468, 172.1875);
+vertex(468, 165.1875);
+vertex(464, 174.1875);
+vertex(461, 178.1875);
+vertex(457, 178.1875);
+vertex(455, 173.1875);
+vertex(450, 161.1875);
+vertex(453, 154.1875);
+vertex(456, 147.1875);
+vertex(451, 150.1875);
+vertex(454, 144.1875);
+vertex(450, 147.1875);
+vertex(452, 139.1875);
+vertex(449, 143.1875);
+vertex(445, 140.1875);
+vertex(446, 151.1875);
+vertex(448, 158.1875);
+vertex(450, 168.1875);
+vertex(452, 177.1875);
+vertex(446, 176.1875);
+vertex(439, 174.1875);
+vertex(433, 169.1875);
+vertex(426, 164.1875);
+vertex(420, 160.1875);
+vertex(410, 155.1875);
+vertex(402, 152.1875);
+vertex(395, 151.1875);
+vertex(385, 151.1875);
+vertex(377, 150.1875);
+vertex(369, 150.1875);
+vertex(362, 153.1875);
+vertex(350, 153.1875);
+vertex(344, 154.1875);
+vertex(337, 155.1875);
+vertex(329, 155.1875);
+vertex(319, 155.1875);
+vertex(309, 156.1875);
+vertex(299, 159.1875);
+vertex(292, 159.1875);
+vertex(285, 159.1875);
+vertex(281, 159.1875);
+vertex(269, 158.1875);
+vertex(257, 154.1875);
+vertex(246, 153.1875);
+vertex(239, 149.1875);
+vertex(231, 146.1875);
+vertex(224, 143.1875);
+vertex(215, 141.1875);
+vertex(206, 141.1875);
+vertex(202, 142.1875);
+endShape();
+  //boca 1
+  beginShape();
+  fill(156,76,0)
+vertex(446, 114.1875);
+vertex(443, 114.1875);
+vertex(440, 117.1875);
+vertex(440, 120.1875);
+vertex(444, 123.1875);
+vertex(448, 122.1875);
+vertex(456, 119.1875);
+vertex(452, 116.1875);
+vertex(447, 114.1875);
+endShape();
+  beginShape();
+vertex(186, 123.1875);
+vertex(190, 120.1875);
+vertex(196, 119.1875);
+vertex(200, 119.1875);
+vertex(203, 121.1875);
+vertex(200, 124.1875);
+vertex(196, 125.1875);
+vertex(190, 125.1875);
+vertex(187, 123.1875);
+endShape();
+  //nariz 1
+  beginShape();
+  fill(255,204,153)
+vertex(448, 94.1875);
+vertex(447, 101.1875);
+vertex(452, 104.1875);
+vertex(455, 107.1875);
+vertex(453, 109.1875);
+vertex(448, 107.1875);
+vertex(442, 107.1875);
+vertex(442, 98.1875);
+vertex(443, 93.1875);
+endShape();
+  beginShape();
+vertex(196, 98.1875);
+vertex(198, 104.1875);
+vertex(201, 111.1875);
+vertex(199, 113.1875);
+vertex(196, 113.1875);
+vertex(193, 113.1875);
+vertex(190, 113.1875);
+vertex(189, 108.1875);
+endShape();
+  //Ojo
+beginShape();
+  fill(0,0,0)
+vertex(453, 94.1875);
+vertex(457, 89.1875);
+vertex(464, 90.1875);
+vertex(467, 94.1875);
+vertex(461, 97.1875);
+vertex(454, 96.1875);
+endShape();
+ beginShape();
+vertex(431, 95.1875);
+vertex(433, 92.1875);
+vertex(436, 90.1875);
+vertex(440, 90.1875);
+vertex(443, 93.1875);
+vertex(443, 98.1875);
+vertex(439, 99.1875);
+vertex(436, 98.1875);
+vertex(431, 96.1875);
+endShape();
+  beginShape();
+vertex(174, 99.1875);
+vertex(183, 96.1875);
+vertex(188, 99.1875);
+vertex(185, 105.1875);
+vertex(181, 104.1875);
+vertex(178, 104.1875);
+vertex(175, 97.1875);
+endShape();
+  beginShape();
+vertex(198, 102.1875);
+vertex(201, 97.1875);
+vertex(205, 96.1875);
+vertex(209, 99.1875);
+vertex(207, 103.1875);
+vertex(201, 104.1875);
+vertex(198, 103.1875);
+endShape();
+  //entreccejo
+beginShape();
+vertex(427, 89.1875);
+vertex(429, 85.1875);
+vertex(434, 85.1875);
+vertex(439, 84.1875);
+vertex(443, 86.1875);
+vertex(445, 87.1875);
+vertex(450, 85.1875);
+vertex(457, 83.1875);
+vertex(463, 83.1875);
+vertex(470, 85.1875);
+vertex(471, 87.1875);
+vertex(466, 87.1875);
+vertex(462, 87.1875);
+vertex(455, 88.1875);
+vertex(447, 92.1875);
+vertex(441, 90.1875);
+vertex(437, 89.1875);
+vertex(432, 89.1875);
+vertex(427, 89.1875);
+endShape();
+  beginShape();
+vertex(172, 94.1875);
+vertex(177, 90.1875);
+vertex(186, 89.1875);
+vertex(191, 90.1875);
+vertex(193, 93.1875);
+vertex(198, 90.1875);
+vertex(206, 89.1875);
+vertex(211, 91.1875);
+vertex(210, 92.1875);
+vertex(205, 92.1875);
+vertex(201, 94.1875);
+vertex(198, 96.1875);
+vertex(194, 98.1875);
+vertex(189, 95.1875);
+vertex(185, 93.1875);
+vertex(180, 93.1875);
+vertex(175, 94.1875);
+endShape();
+    }
+  </script>
 </body>
 </html>
