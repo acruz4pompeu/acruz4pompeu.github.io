@@ -105,10 +105,103 @@ function setup() {
             }
         }
       }
-         
+       function setup() {
+  createCanvas(windowWidth, windowHeight);
+
+  let neutralGrad = getGradientForEmotion('neutral');
+  currentGradientStart = neutralGrad.start;
+  currentGradientEnd = neutralGrad.end;
+
+  video = createCapture(VIDEO);
+  video.size(320, 240);
+  video.hide();
+  video.elt.muted = true;
+  video.elt.playsinline = true;
+
+  const options = {
+    withLandmarks: true,
+    withExpressions: true,
+    withDescriptors: false
+  };
+
+  faceapi = ml5.faceApi(video, options, () => {
+    modelsReady = true;
+    document.getElementById('loading-screen').style.display = 'none';
+    faceapi.detect(gotResults);
+  });
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+  video.size(max(160, width / 4), max(120, height / 4));
+}
+
+function gotResults(err, results) {
+  if (err) {
+    console.error(err);
+    document.getElementById('loading-screen').innerHTML =
+      '<p style="color: red">Error! Comprova la càmera i actualitza.</p>';
+    return;
+  }
+  detections = results;
+  if (detections.length > 0) updateCurrentExpression();
+  faceapi.detect(gotResults);
+}
+
+function updateCurrentExpression() {
+  let maxIntensity = 0;
+  detections.forEach(face => {
+    const expr = face.expressions;
+    const dominant = Object.keys(expr).reduce((a, b) => expr[a] > expr[b] ? a : b);
+    if (expr[dominant] > maxIntensity) {
+      currentExpression = {
+        dominant: dominant,
+        intensity: expr[dominant]
+      };
+      maxIntensity = expr[dominant];
+    }
+  });
+  let grad = getGradientForEmotion(currentExpression.dominant);
+  targetGradientStart = grad.start;
+  targetGradientEnd = grad.end;
+}
 
 function draw() {
-  background(220);
+  smoothIntensity = lerp(smoothIntensity, currentExpression.intensity, 0.1);
+
+  if (targetGradientStart && targetGradientEnd) {
+    currentGradientStart = lerpColor(currentGradientStart, targetGradientStart, 0.1);
+    currentGradientEnd = lerpColor(currentGradientEnd, targetGradientEnd, 0.1);
+  }
+
+  setGradient(0, 0, width, height, currentGradientStart, currentGradientEnd, 'y');
+
+  push();
+  translate(width / 3, height / 8);
+  const scaleFactor = min(width, height) / 800;
+  scale(scaleFactor);
+  drawArt();
+  pop();
+
+  drawHUD();
+  drawVideoPreview();
+}
+
+function drawArt() {
+  const { dominant } = currentExpression;
+  const t = frameCount * 0.05;
+  const centerX = 0;
+  const centerY = 0;
+  const baseSize = 200 * smoothIntensity;
+  strokeWeight(map(smoothIntensity, 0, 1, 1, 4));
+  noFill();
+
+  switch (dominant) {
+    // aquí continuarías con los casos como 'happy', 'angry', etc.
+  }
+}
+         
+          case 'default':
   //pelo frida 1
   fill(0,0,0)
 beginShape();
@@ -1587,3 +1680,6 @@ vertex(180, 93.1875);
 vertex(175, 94.1875);
 endShape();
 }
+  case 'happy':
+          stroke(0); // gris suau
+strokeWeight(5)
