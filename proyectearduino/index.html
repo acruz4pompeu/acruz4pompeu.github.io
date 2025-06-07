@@ -1,65 +1,78 @@
 <!DOCTYPE html>
 <html lang="ca">
-<capçalera>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=amplada-del-dispositiu, escala-inicial=1.0">
-<title>Projecte d'Arduino de música i llums</title>
-<enllaç rel="sheet" href=" https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/default.min.css ">
-<script src=" https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js "></script>
-<script src=" https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/js/all.min.js "></script>
-<script>hljs.highlightAll();</script>
-<estil>
-cos { família de lletres: Arial, sans-serif; alçada de línia: 1.6; marge: 20px; }
-pre { fons: #f4f4f4; farciment: 10px; desbordament-x: automàtic; posició: relativa; }
-codi { família-tipus: monospace; }
-.copy-btn {
-posició: absoluta;
-superior: 5px;
-dreta: 5px;
-fons: cap;
-frontera: cap;
-cursor: punter;
-mida de la lletra: 16px;
-color: #007bff;
-}
-</estil>
-<script>
-funció copiaCodi(botó) {
-const codeBlock = button.nextElementSibling.innerText;
-navigator.clipboard.writeText(codeBlock).then(() => {
-botó.innerHTML = '<i class="fas fa-check"></i>';
-setTimeout(() => { button.innerHTML = '<i class="fas fa-copy"></i>'; }, 2000);
-});
-}
-</script>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Projecte d'Arduino de música i llums</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/default.min.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/js/all.min.js"></script>
+  <script>hljs.highlightAll();</script>
+  <style>
+    body { font-family: Arial, sans-serif; line-height: 1.6; margin: 20px; }
+    pre { background: #f4f4f4; padding: 10px; overflow-x: auto; position: relative; }
+    code { font-family: monospace; }
+    .copy-btn {
+      position: absolute;
+      top: 5px;
+      right: 5px;
+      background: none;
+      border: none;
+      cursor: pointer;
+      font-size: 16px;
+      color: #007bff;
+    }
+  </style>
+  <script>
+    function copiaCodi(button) {
+      const codeBlock = button.nextElementSibling.innerText;
+      navigator.clipboard.writeText(codeBlock).then(() => {
+        button.innerHTML = '<i class="fas fa-check"></i>';
+        setTimeout(() => { button.innerHTML = '<i class="fas fa-copy"></i>'; }, 2000);
+      });
+    }
+  </script>
 </head>
+<body>
+
 <h1>Introducció</h1>
-  <<p>Durant aquest temps, jo i Pau vam decidir fer una idea de proyecte basada en un joc de quan erem nens, un joc de memoria. Per això utilitzarem materials i conceptes que mai 
-  em fet, ammb això incluim pantalles leds o resistors.</p>
+<p>Durant aquest temps, jo i Pau vam decidir fer una idea de projecte basada en un joc de quan érem nens, un joc de memòria. Per això utilitzarem materials i conceptes que mai 
+hem fet, amb això incloem pantalles LEDs o resistors.</p>
+
 <h1>Objectius</h1>
-<p>Pincipalment, la nostre idea és crear un joc que interactui amb leds, que reconegui els botons que estaran al costat de les leds per que reconeixi el moviment de la persona. 
-També tenim com a objectiu usar les pantalles perquè mai les hem usat i hi han moltes funcions (com el liquidCrystal), que ens semblen molt curioses i volem interactuar amb elles.</p>
-    <h1>Materials</h1>
-    <p>Hem utilitzat leds del model RGB, que sòn quatre, que venen conectades amb 4 botons, cconcretament un ''push button'', tamb´una pantalla quadrada i uns resistors de 200</p>
+<p>Principalment, la nostra idea és crear un joc que interactuï amb LEDs, que reconegui els botons que estaran al costat de les LEDs perquè reconegui el moviment de la persona. 
+També tenim com a objectiu usar les pantalles perquè mai les hem usat i hi ha moltes funcions (com el liquidCrystal), que ens semblen molt curioses i volem interactuar amb elles.</p>
 
-    <h1>Continguts</h1>
-    
-    <p>Primer de tot, cquan vam començar el projecte, vam posar més pes a la progamació en si que en la placa i el montatge, ja que no sabiem com fer el funcionament de aleatorietat
-    per les leds i com podriem fer funcionar la vaiable "Randomseed",pero vam acabar tan farts que no ho vam fer d'aquella manera. Ens vam distribuir el projecte de dos maneres, Pau
-    s'encarregaria de la part més de placa i cables, més buscar com utilitzar les pantalles, en canvi jo faria la part més de codi per arduino i estudiar les diferents funcions del codí
-    </p>
+<h1>Materials</h1>
+<p>Hem utilitzat LEDs del model RGB, que són quatre, que venen connectades amb 4 botons, concretament un "push button", també una pantalla quadrada i uns resistors de 200.</p>
 
-    <p>En la part de muntar tota la placa, ens vam basar en sistemes muntats ja al tinkercad per cuere sobretot la part de pantalles, que era la que més por teniem per no entendre res,
-   ja que conectarla i entendre tot el seu funcionament era visualment complexe però, primer ens vam focalitzar en els cables, que els am conectar ordenadament que quedava en la seva 
-    linea respectiva, conectant els botons i les leds de manera ordenada, perque si, també ens va costar poasr bé els botons</p>
+<h1>Continguts</h1>
 
-    <p>La part de codi és la que considero més facíl, ja que moltes funcions que apareixien ja les he dades a programació, per exemple la funció de les "arrays" o el "tone", fan que
-    pugui crear el codi més facilment, també l'us de variables com el If es impriscensiable, ja que ens determina les diferents posibilitats. L'unic que ens va tornar díficil va ser el
-    funcionament del LCD i les pantalles que vam buscar un tutorial de youtube per descobrir el màxim potencial d'aquesta funció. El nostre màxim error aqui va ser que, primer vam fer
-    el codi de aduino sense descarregar les llibreries i clar, sortien un munt d'errors ue no identificaben i gran majoria provenien d'alla</p>
+<p>Primer de tot, quan vam començar el projecte, vam posar més pes a la programació en si que en la placa i el muntatge, ja que no sabíem com fer el funcionament de l'aleatorietat
+per les LEDs i com podríem fer funcionar la variable "Randomseed", però vam acabar tan farts que no ho vam fer d'aquella manera. Ens vam distribuir el projecte de dues maneres: Pau
+s'encarregaria de la part més de placa i cables, i també de buscar com utilitzar les pantalles, en canvi jo faria la part més de codi per Arduino i estudiar les diferents funcions del codi.</p>
 
-    <h1>Conclusió</h1>
-    <p> A sigut un projecte molt interesant, que ens a fet desarollar les notres capacitats de creativitat i imaginació per fer un joc virtual de la nostre infancia, tots els objectius
-    estan fets, amb tot solucionat</p>
+<p>Un dels primers problemes que vam trobar va ser que la nostra pantalla OLED no funcionava correctament. Quan la connectàvem, es sobreescalfava molt ràpidament i no mostrava res
+a la pantalla. Això ens va fer perdre molt temps intentant entendre si era problema de la connexió, de la pantalla o de la programació. Finalment, vam decidir substituir-la per una altra pantalla més senzilla.</p>
 
-    
+<p>També vam tenir problemes amb el posicionament dels botons respecte a les LEDs. Al principi, estaven mal col·locats i provocava confusió durant el joc, ja que no quedava clar quin botó corresponia a quina LED. Això feia que el jugador s'equivoqués sovint.</p>
+
+<p>A nivell de programació, la part de l'aleatorietat va ser una de les més complicades. Ens costava fer que les seqüències generades fossin realment aleatòries i a la vegada repetibles per poder verificar si l'usuari premia els botons correctes. L'ús de "randomSeed" amb soroll analògic va ser una opció, però no va funcionar com esperàvem.</p>
+
+<p>Com a hipòtesi de solució, creiem que una millor planificació del disseny físic (muntatge previ en Tinkercad amb proves reals) i fer proves amb una altra pantalla abans del muntatge final hauria estalviat molt de temps. A més, incorporar comentaris clars al codi i dividir-lo en funcions més petites hauria facilitat el control de l’aleatorietat i el comportament del joc.</p>
+
+<p>En la part de muntar tota la placa, ens vam basar en sistemes muntats ja al Tinkercad per veure sobretot la part de pantalles, que era la que més por teníem per no entendre res,
+ja que connectar-la i entendre tot el seu funcionament era visualment complex. Però primer ens vam focalitzar en els cables, que els vam connectar ordenadament que quedava en la seva 
+línia respectiva, connectant els botons i les LEDs de manera ordenada. També ens va costar posar bé els botons.</p>
+
+<p>La part de codi és la que considero més fàcil, ja que moltes funcions que apareixien ja les he donades a programació. Per exemple, la funció de les "arrays" o el "tone" fan que
+pugui crear el codi més fàcilment. També l'ús de condicions com l'"if" és imprescindible, ja que ens determina les diferents possibilitats. L'únic que ens va tornar difícil va ser el
+funcionament del LCD i les pantalles, que vam buscar un tutorial de YouTube per descobrir el màxim potencial d'aquesta funció. El nostre màxim error aquí va ser que primer vam fer
+el codi d’Arduino sense descarregar les llibreries, i clar, sortien un munt d'errors que no identificàvem i la gran majoria provenien d'allà.</p>
+
+<h1>Conclusió</h1>
+<p>Ha sigut un projecte molt interessant, que ens ha fet desenvolupar les nostres capacitats de creativitat i imaginació per fer un joc virtual de la nostra infància. Tots els objectius
+estan fets, amb tot solucionat.</p>
+
+</body>
+</html>
